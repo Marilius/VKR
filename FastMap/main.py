@@ -166,6 +166,7 @@ def phase2(dendrogram: Dendrogram, resource_clusters):
     """
     task_clusters = []
     task_clusters.append(dendrogram)
+    
     ...
 
 
