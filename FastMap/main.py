@@ -1,16 +1,20 @@
 import math
 from copy import deepcopy
 from dataclasses import dataclass
-from random import choice, randint
+from random import choice, randint, sample, choices
 
-R1 = 0.5
-R2 = 0.07
+
+CROSSOVER_PROBABILITY = 0.95
+MUTATION_PROBABILITY = 0.05
 G = None
+G_copy = None
 PG = None
 all_edges = None
 BIG_NUMBER = 1e10
-PENALTY = True
+PENALTY = False
 CUT_RATIO = 0.45
+ITER_MAX = 50
+NUM_OF_INDIVIDUALS = 100
 
 
 @dataclass
@@ -87,6 +91,7 @@ def phase1(G: dict[int: Node]) -> Dendrogram:
     7.     add to dendrogram(a,u,v)
     8. end while
     """
+    global G_copy
     # Initialize each node as a single element cluster
     # index = G[len(G) - 1].id + len(G) + 1
     index = max(G.keys())
@@ -105,6 +110,9 @@ def phase1(G: dict[int: Node]) -> Dendrogram:
     # While not all nodes in one cluster
     while len(dendrogram) > 1:
         # take edge next in order
+
+        # TODO(Marilius)-------------------------------------- количество рёбер между группами = вес???
+
         edge = edges.pop(0)
         # determine groups u and v to which the end nodes of the current edge belongs
         u, v = edge
@@ -144,8 +152,8 @@ def phase1(G: dict[int: Node]) -> Dendrogram:
 
         index += 1
 
-        G[u.id] = u
-        G[v.id] = v
+        G_copy[u.id] = u
+        G_copy[v.id] = v
 
         dendrogram.append(m)
         dendrogram.remove(u)
@@ -164,39 +172,144 @@ def phase2(dendrogram: Dendrogram, resource_clusters):
     3. GA(task clusters, resource clusters)
     4. Send task clusters to their respective resource clusters
     """
+    global G_copy
     task_clusters = []
     task_clusters.append(dendrogram)
     
+    weight_0 = dendrogram.weight
+
+    # traverse dendrogram() - АБСОЛЮТНО ХЗ ЧТО ТАМ ПРОИСХОДИТ:
+    # 1. While n ≤ number of resource clusters
+    # 2.     task clusters [n++] = dendrogram[root].rchild
+    # 3.     task clusters [n] = dendrogram[root].lchild
+    # 4.     If n ≤ number of clusters
+    # 5.         n--
+    # 6.         traverse dendrogram()
+    # 7.     End if
+    # 8. End while
+    # переписал как понял, так это имеет хоть какой-то смысл:
+    while len(task_clusters) < len(resource_clusters):  # number of resource_clusters
+        key = 0
+        max_weight = task_clusters[key].weight
+        for i in range(1, len(task_clusters)):
+            if task_clusters[i].weight > max_weight:
+                max_weight = task_clusters[i].weight
+                key = i
+        task_clusters.append(G_copy[task_clusters[key].leftchild])
+        task_clusters[key] = G_copy[task_clusters[key].rightchild]
+    
+    # print(task_clusters)
+    weight = 0
+    for i in task_clusters:
+        weight += i.weight
+    
+    assert weight == weight_0
+
+    partition = GA(task_clusters)
+
+    print(partition)
+    print(f(partition))
+
+    # send tasks to resource clusters
+
     ...
 
 
-def traverse_dendrogram():
-    """traverse dendrogram()
-    1. While n ≤ number of resource clusters
-    2.     task clusters [n++] = dendrogram[root].rchild
-    3.     task clusters [n] = dendrogram[root].lchild
-    4.     If n ≤ number of clusters
-    5.         n--
-    6.         traverse dendrogram()
-    7.     End if
-    8. End while
-    """
-    ...
+def f(individual: list[int]) -> float:
+    t_max = 0
+
+    for i in range(len(individual)):
+        t_curr = G_copy[individual[i]].weight / PG[i].weight
+        if t_curr > t_max:
+            t_max = t_curr
+
+    if PENALTY: # TODO(Marilius) написать функцию штрафа, пока без неё, но хз, как она тут оптимизироваться будет
+        if calc_cut_ratio(individual) > CUT_RATIO:
+            t_max += BIG_NUMBER
+
+    return t_max
 
 
-def ga_two_point_crossover(individuals0: list[list[int]]) -> list[list[int]]:
+def ga_initialization(task_clusters: list[Dendrogram]) -> list[list[int]]:
+    individuals = []
+    print(len(task_clusters))
+    for _ in range(min(NUM_OF_INDIVIDUALS, len(task_clusters))):
+        # или наоборот????????????????????????????????????????????????????????????????????????
+        new_individual = sample(task_clusters, len(task_clusters))
+        while new_individual in individuals:
+            new_individual = sample(task_clusters, len(task_clusters))
+        individuals.append(new_individual)
+    
+    print('leave ga_initialization')
+
+    return individuals
+
+
+def GA(task_clusters: list[Dendrogram]) -> dict[int, list[int]]:
+    global all_edges, n, CROSSOVER_PROBABILITY
+
+    individual_curr = None
+    f_curr = 2 * BIG_NUMBER
+    flag = True
+    epoch = 0
+    while flag:
+        print(f'epoch: {epoch}, f_curr: {f_curr}')
+        flag = False
+
+        individuals = ga_initialization(task_clusters)
+
+        f_vals = [f(individual) for individual in individuals]
+        f_best = min(f_vals)
+        individual_best = individuals[f_vals.index(f_best)].copy()
+
+        for _ in range(ITER_MAX):
+            individuals = ga_crossover(individuals)
+            individuals = ga_mutation(individuals)
+
+            while len(individuals) > NUM_OF_INDIVIDUALS:
+                f_vals = [f(partition, individuals) for individuals in individuals]
+
+                individual = choices(individuals, weights=f_vals)
+
+                individuals.remove(individual)
+
+
+            vals = [f(partition, individual) for individual in individuals]
+
+            f_min = min(vals)
+            individual_min = individuals[vals.index(f_min)]
+
+            if f_min < f_best:
+                f_best = f_min
+                individual_best = individual_min.copy()
+
+        if f_best < f_curr:
+            flag = True
+
+            f_curr = f_best
+            individual_curr = individual_best.copy()
+
+        epoch += 1
+
+    print('GAP ENDED')
+
+    return individual_curr
+
+
+def ga_crossover(individuals0: list[list[int]]) -> list[list[int]]:
     individuals = deepcopy(individuals0)
     
     # TODO проверить можно ли убрать
-    n = len(individuals)
     k = len(individuals[0])
 
-    for _ in range(math.trunc(R1*n)):
+    for _ in range(math.trunc(CROSSOVER_PROBABILITY*n)):
         new_individual1 = []
         new_individual2 = []
 
-        a = randint(0, n - 1)
-        b = randint(0, n - 1)
+        # TODO() - roulette wheel 
+
+        a = randint(0, NUM_OF_INDIVIDUALS - 1)
+        b = randint(0, NUM_OF_INDIVIDUALS - 1)
         if a != b:
             index = randint(0, k - 1)
             for j in range(index):
@@ -222,7 +335,7 @@ def ga_mutation(individuals0: list[list[int]]) -> list[list[int]]:
     n = len(individuals)
     k = len(individuals[0])
 
-    for _ in range(math.trunc(R2*n)):
+    for _ in range(math.trunc(MUTATION_PROBABILITY*n)):
         index = randint(0, n - 1)
 
         a = randint(0, k - 1)
@@ -246,7 +359,10 @@ if __name__ == '__main__':
 
     # print(G)
 
-    phase1(G)
+    dendrogram = phase1(G)
+    partition = phase2(dendrogram, PG)
+
+    print(dendrogram)
 
     # partition = gap(G, PG)
 
