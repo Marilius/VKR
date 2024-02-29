@@ -217,8 +217,10 @@ def phase2(dendrogram: Dendrogram, resource_clusters):
 
 def f(individual: list[int]) -> float:
     t_max = 0
+    # print(individual)
 
     for i in range(len(individual)):
+        # print(type(individual[i]))
         t_curr = G_copy[individual[i]].weight / PG[i].weight
         if t_curr > t_max:
             t_max = t_curr
@@ -232,13 +234,14 @@ def f(individual: list[int]) -> float:
 
 def ga_initialization(task_clusters: list[Dendrogram]) -> list[list[int]]:
     individuals = []
-    print(len(task_clusters))
-    for _ in range(min(NUM_OF_INDIVIDUALS, len(task_clusters))):
-        # или наоборот????????????????????????????????????????????????????????????????????????
+    # print(len(task_clusters))
+    n = min(NUM_OF_INDIVIDUALS, len(task_clusters))
+    for _ in range(n):
+        # TODO TODO TODO или наоборот????????????????????????????????????????????????????????????????????????
         new_individual = sample(task_clusters, len(task_clusters))
         while new_individual in individuals:
             new_individual = sample(task_clusters, len(task_clusters))
-        individuals.append(new_individual)
+        individuals.append([individual.id for individual in new_individual])
     
     print('leave ga_initialization')
 
@@ -267,14 +270,17 @@ def GA(task_clusters: list[Dendrogram]) -> dict[int, list[int]]:
             individuals = ga_mutation(individuals)
 
             while len(individuals) > NUM_OF_INDIVIDUALS:
-                f_vals = [f(partition, individuals) for individuals in individuals]
+                f_vals = [f(individual) for individual in individuals]
 
-                individual = choices(individuals, weights=f_vals)
+                individual = choices(individuals, weights=f_vals)[0]
 
+                # print(individuals)
+                # print(len(individuals))
+                # print(individual)
                 individuals.remove(individual)
 
 
-            vals = [f(partition, individual) for individual in individuals]
+            vals = [f(individual) for individual in individuals]
 
             f_min = min(vals)
             individual_min = individuals[vals.index(f_min)]
@@ -301,15 +307,16 @@ def ga_crossover(individuals0: list[list[int]]) -> list[list[int]]:
     
     # TODO проверить можно ли убрать
     k = len(individuals[0])
+    n = min(len(individuals0), NUM_OF_INDIVIDUALS)
 
-    for _ in range(math.trunc(CROSSOVER_PROBABILITY*n)):
+    for _ in range(math.trunc(CROSSOVER_PROBABILITY * n)):
         new_individual1 = []
         new_individual2 = []
 
         # TODO() - roulette wheel 
 
-        a = randint(0, NUM_OF_INDIVIDUALS - 1)
-        b = randint(0, NUM_OF_INDIVIDUALS - 1)
+        a = randint(0, n - 1)
+        b = randint(0, n - 1)
         if a != b:
             index = randint(0, k - 1)
             for j in range(index):
