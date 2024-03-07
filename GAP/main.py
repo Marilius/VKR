@@ -411,12 +411,12 @@ if __name__ == '__main__':
     # G = input_graph_from_file(r'../data/trash/graph100.txt')
     # G = input_graph_from_file(r'../data/trash/graph10.txt')
     # G = input_graph_from_file(r'../data/trash/test1.txt')
-    # G = input_graph_from_file(r'../data/trash/gap2.txt')
+    G = input_graph_from_file(r'../data/trash/gap2.txt')
     # G = input_graph_from_file(r'../data/trash/hetero0.txt')
     # G = input_graph_from_file(r'../data/trash/hetero1.txt')
 
-    PG = input_graph_from_file(r'../data/test_gp/0.txt')
-    # PG = input_graph_from_file(r'../data/test_gp/homo3.txt')
+    # PG = input_graph_from_file(r'../data/test_gp/0.txt')
+    PG = input_graph_from_file(r'../data/test_gp/homo3.txt')
 
     # print(G)
     # print(PG)

@@ -1,7 +1,7 @@
 import math
 from copy import deepcopy
 from dataclasses import dataclass
-from random import choice, randint, sample, choices
+from random import randint, sample, choices
 
 
 CROSSOVER_PROBABILITY = 0.95
@@ -15,6 +15,7 @@ PENALTY = False
 CUT_RATIO = 0.45
 ITER_MAX = 50
 NUM_OF_INDIVIDUALS = 100
+REVERSE_ORDER = None
 
 
 @dataclass
@@ -38,7 +39,7 @@ def get_edges(G: dict[int: Node]) -> list[list[int, int]]:
     edges = []
     for node in G:
         for node2 in G[node].children:
-            edges.append([node, node2])
+            edges.append([node, node2, 1])
     return edges
 
 
@@ -55,11 +56,11 @@ def input_graph_from_file(path: str) -> dict[int: Node]:
 
 
 def calc_edgecut(partition: dict[int, list[int]]) -> int:
-    global all_edges
+    all_edges = get_edges(G)
     edgecut = 0
 
     for edge in all_edges:
-        node1, node2 = edge
+        node1, node2, _ = edge
 
         for i in partition:
             if node1 in partition[i] and node2 in partition[i]:
@@ -71,7 +72,7 @@ def calc_edgecut(partition: dict[int, list[int]]) -> int:
 
 
 def calc_cut_ratio(partition: dict[int, list[int]]) -> float:
-    global all_edges
+    all_edges = get_edges(G)
 
     if len(all_edges):
         return calc_edgecut(partition) / len(all_edges)
@@ -111,16 +112,11 @@ def phase1(G: dict[int: Node]) -> Dendrogram:
     while len(dendrogram) > 1:
         # take edge next in order
 
-        # TODO(Marilius)-------------------------------------- количество рёбер между группами = вес???
-
         edge = edges.pop(0)
         # determine groups u and v to which the end nodes of the current edge belongs
-        u, v = edge
+        u, v, _ = edge
         if u == v:
             continue
-
-        # print(dendrogram)
-        # print(edges)
 
         for i in range(len(dendrogram)):
             # print(i)
@@ -144,13 +140,41 @@ def phase1(G: dict[int: Node]) -> Dendrogram:
         u.parent = index
         v.parent = index
 
-        for edge in edges:
-            if edge[0] == u.id or edge[0] == v.id:
-                edge[0] = index
-            elif edge[1] == u.id or edge[1] == v.id:
-                edge[1] = index
+        print(edges)
+
+        for i in range(len(edges)):
+            # print(edges[i], u.id, v.id, index, end=' ')
+            if edges[i][0] == u.id or edges[i][0] == v.id:
+                edges[i][0] = index
+            if edges[i][1] == u.id or edges[i][1] == v.id:
+                edges[i][1] = index
+            # print(edges[i])
 
         index += 1
+        print(u.id, v.id, index)
+        print('after renaming', edges)
+
+        i = 0
+        while i < len(edges):
+            edge_i = edges[i]
+            u_i, v_i, w_i = edge_i
+            # print(u_i, v_i, w_i)
+            for j in range(len(edges)):
+                if i == j:
+                    continue
+
+                edge_j = edges[j]
+                u_j, v_j, w_j = edge_j
+
+                if u_i == u_j and v_i == v_j:
+                    # print('merging', edge_i, edge_j)
+                    i = 0
+                    edges.remove(edge_i)
+                    edges.remove(edge_j)
+                    edges.append([u_i, v_i, w_i + w_j])
+                    break
+            else:
+                i += 1
 
         G_copy[u.id] = u
         G_copy[v.id] = v
@@ -158,6 +182,11 @@ def phase1(G: dict[int: Node]) -> Dendrogram:
         dendrogram.append(m)
         dendrogram.remove(u)
         dendrogram.remove(v)
+
+        edges.sort(key=lambda x: x[2], reverse=REVERSE_ORDER) # <------------------------------------
+
+        print('after merging', edges, '\n')
+        # raise Exception
 
     print(dendrogram)
 
@@ -188,16 +217,22 @@ def phase2(dendrogram: Dendrogram, resource_clusters):
     # 7.     End if
     # 8. End while
     # переписал как понял, так это имеет хоть какой-то смысл:
+    print('Traversing dendrogram')
     while len(task_clusters) < len(resource_clusters):  # number of resource_clusters
+        print(task_clusters)
+        print([task.weight for task in task_clusters])
         key = 0
         max_weight = task_clusters[key].weight
-        for i in range(1, len(task_clusters)):
+        for i in range(len(task_clusters)):
             if task_clusters[i].weight > max_weight:
                 max_weight = task_clusters[i].weight
                 key = i
         task_clusters.append(G_copy[task_clusters[key].leftchild])
         task_clusters[key] = G_copy[task_clusters[key].rightchild]
     
+    print(task_clusters)
+    print([task.weight for task in task_clusters])
+
     # print(task_clusters)
     weight = 0
     for i in task_clusters:
@@ -212,7 +247,7 @@ def phase2(dendrogram: Dendrogram, resource_clusters):
 
     # send tasks to resource clusters
 
-    ...
+    return partition
 
 
 def f(individual: list[int]) -> float:
@@ -226,31 +261,28 @@ def f(individual: list[int]) -> float:
             t_max = t_curr
 
     if PENALTY: # TODO(Marilius) написать функцию штрафа, пока без неё, но хз, как она тут оптимизироваться будет
-        if calc_cut_ratio(individual) > CUT_RATIO:
+        if calc_cut_ratio(unpack(individual)) > CUT_RATIO:
             t_max += BIG_NUMBER
+
+
+    # print(calc_cut_ratio(unpack(individual)))
 
     return t_max
 
 
 def ga_initialization(task_clusters: list[Dendrogram]) -> list[list[int]]:
     individuals = []
-    # print(len(task_clusters))
     n = min(NUM_OF_INDIVIDUALS, len(task_clusters))
     for _ in range(n):
-        # TODO TODO TODO или наоборот????????????????????????????????????????????????????????????????????????
         new_individual = sample(task_clusters, len(task_clusters))
         while new_individual in individuals:
             new_individual = sample(task_clusters, len(task_clusters))
         individuals.append([individual.id for individual in new_individual])
-    
-    print('leave ga_initialization')
 
     return individuals
 
 
 def GA(task_clusters: list[Dendrogram]) -> dict[int, list[int]]:
-    global all_edges, n, CROSSOVER_PROBABILITY
-
     individual_curr = None
     f_curr = 2 * BIG_NUMBER
     flag = True
@@ -265,9 +297,17 @@ def GA(task_clusters: list[Dendrogram]) -> dict[int, list[int]]:
         f_best = min(f_vals)
         individual_best = individuals[f_vals.index(f_best)].copy()
 
-        for _ in range(ITER_MAX):
+        for iter in range(ITER_MAX):
+            if iter % 10 == 0:
+                print(f'iteration: {iter} out of {ITER_MAX}')
+
             individuals = ga_crossover(individuals)
             individuals = ga_mutation(individuals)
+            
+            individual_to_save = None
+            f_vals = [f(individual) for individual in individuals]
+            f_best = min(f_vals)
+            individual_to_save = individuals[f_vals.index(f_best)].copy()
 
             while len(individuals) > NUM_OF_INDIVIDUALS:
                 f_vals = [f(individual) for individual in individuals]
@@ -279,6 +319,8 @@ def GA(task_clusters: list[Dendrogram]) -> dict[int, list[int]]:
                 # print(individual)
                 individuals.remove(individual)
 
+            if individual_to_save not in individuals:
+                individuals.append(individual_to_save)
 
             vals = [f(individual) for individual in individuals]
 
@@ -307,16 +349,23 @@ def ga_crossover(individuals0: list[list[int]]) -> list[list[int]]:
     
     # TODO проверить можно ли убрать
     k = len(individuals[0])
-    n = min(len(individuals0), NUM_OF_INDIVIDUALS)
+    n = len(individuals0)
 
-    for _ in range(math.trunc(CROSSOVER_PROBABILITY * n)):
+    prob = list(map(f, individuals0))
+    prob_sum = sum(prob)
+    prob = list(map(lambda x: x / prob_sum, prob))
+
+    i = 0
+
+    while i < math.trunc(CROSSOVER_PROBABILITY * n):
+        # print(i)
+    # for _ in range(math.trunc(CROSSOVER_PROBABILITY * n)):
         new_individual1 = []
         new_individual2 = []
 
-        # TODO() - roulette wheel 
+        a = choices(range(n), weights=prob)[0]
+        b = choices(range(n), weights=prob)[0]
 
-        a = randint(0, n - 1)
-        b = randint(0, n - 1)
         if a != b:
             index = randint(0, k - 1)
             for j in range(index):
@@ -329,20 +378,28 @@ def ga_crossover(individuals0: list[list[int]]) -> list[list[int]]:
             assert len(new_individual1) == k
             assert len(new_individual2) == k
 
+            if len(new_individual1) != len(set(new_individual1)):
+                continue
+
+            if len(new_individual2) != len(set(new_individual2)):
+                continue
+
             individuals.append(new_individual1)
             individuals.append(new_individual2)
+
+            i += 1
     
     return individuals
 
 
-def ga_mutation(individuals0: list[list[int]]) -> list[list[int]]:
-    individuals = deepcopy(individuals0)
-    
-    # TODO проверить можно ли убрать
-    n = len(individuals)
-    k = len(individuals[0])
+def ga_mutation(individuals: list[list[int]]) -> list[list[int]]:
 
-    for _ in range(math.trunc(MUTATION_PROBABILITY*n)):
+    k = len(individuals[0])
+    n = min(len(individuals), NUM_OF_INDIVIDUALS)
+
+    for _ in range(math.trunc(MUTATION_PROBABILITY * n)):
+        # range(math.trunc(MUTATION_PROBABILITY*n)):
+        # for i in range(len(individual)):
         index = randint(0, n - 1)
 
         a = randint(0, k - 1)
@@ -353,36 +410,69 @@ def ga_mutation(individuals0: list[list[int]]) -> list[list[int]]:
     return individuals
 
 
+def unpack_dendrogram(x: int) -> list[int]:
+    if x is None:
+        return []
+
+    if x in G:
+        return [x]
+
+    return unpack_dendrogram(G_copy[x].leftchild) + unpack_dendrogram(G_copy[x].rightchild)
+
+
+def unpack(partition: list[int]) -> dict[int: list[int]]:
+    unpacked = {}
+
+    for i, key in enumerate(PG): 
+        unpacked[key] = unpack_dendrogram(partition[i])
+
+    return unpacked
+
+
+def calc_load(partition: dict[int, list[int]]) -> dict[int: int]:
+    ans = {}
+    for key in PG:
+        ans[key] = sum([G[node].weight for node in partition[key]])
+
+    return ans
+
+
+def FastMap(G: dict[int, Node], PG: dict[int, Node]) -> dict[int, list[int]]:
+    dendrogram = phase1(G)
+    partition = phase2(dendrogram, PG)
+    return partition
+
+
 if __name__ == '__main__':
-    # G = input_graph_from_file(r'../data/triangle/graphs/triadag10_0.txt')
+    # граф - как минимум связный
+    # честно говоря генетика не имеет смысла - всё равно скорости передачи не учитываются, а от перераспределения работ доля секущих не меняется
+    # а по скорости лучше всего больше всего - на самый быстрый
+    REVERSE_ORDER = False
+    # REVERSE_ORDER = True
+    G = input_graph_from_file(r'../data/triangle/graphs/triadag10_0.txt')
     # G = input_graph_from_file(r'../data/sausages/dagA0.txt')
     # G = input_graph_from_file(r'../data/trash/graph100.txt')
     # G = input_graph_from_file(r'../data/trash/graph10.txt')
-    G = input_graph_from_file(r'../data/trash/gap1.txt')
-    PG = input_graph_from_file(r'../data/test_gp/0.txt')
+    # G = input_graph_from_file(r'../data/trash/test1.txt')
+    # G = input_graph_from_file(r'../data/trash/gap2.txt')
+    # G = input_graph_from_file(r'../data/trash/hetero0.txt')
+    # G = input_graph_from_file(r'../data/trash/hetero1.txt')
 
-    k = len(PG)
-    all_edges = get_edges(G)
+    PG = input_graph_from_file(r'../data/test_gp/0.txt')
+    # PG = input_graph_from_file(r'../data/test_gp/homo3.txt')
+
+    # k = len(PG)
+    # all_edges = get_edges(G)
 
     # print(G)
 
-    dendrogram = phase1(G)
-    partition = phase2(dendrogram, PG)
+    partition = FastMap(G, PG)
 
-    print(dendrogram)
+    print('---------------')
+    print('partition = ', partition)
+    print('unpack(partition) = ', unpack(partition))
+    print('final f(partition) = ', f(partition))
+    print('proc load = ', calc_load(unpack(partition)))
+    print('cut ratio = ', calc_cut_ratio(unpack(partition)))
+    print('---------------')
 
-    # partition = gap(G, PG)
-
-    # e = []
-    # for proc in partition:
-    #     for node in partition[proc]:
-    #         e.append(node)
-
-    # assert len(e) == len(G)
-    # assert len(set(e)) == len(set(G))
-
-    # print(partition)
-    # print(f(partition))
-    # print('cut_ratio:', calc_cut_ratio(partition))
-
-    # print(PG)
