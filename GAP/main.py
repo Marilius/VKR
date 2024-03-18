@@ -1,3 +1,6 @@
+from os import listdir
+from os.path import isfile, join
+
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass
@@ -248,8 +251,11 @@ def ga_random_resetting(individuals: list[list[int]], cut_edges: list[tuple[int,
     return individuals
 
 
-def f(partition: dict[int, list[int]], individual: list[int] = None) -> float:
+def f(partition: dict[int, list[int]] | None, individual: list[int] = None) -> float:
     global G, PG, all_edges, k
+
+    if partition is None:
+        return 2 * BIG_NUMBER
 
     new_partition = deepcopy(partition)
 
@@ -346,6 +352,9 @@ def gap(G: dict[int: Node], PG: dict[int: Node]) -> dict[int, list[int]]:
         individual_best = individuals[f_vals.index(f_best)].copy()
 
         for i in range(ITER_MAX):
+            if k == 0:
+                return partition
+
             individuals = ga_one_point_crossover(individuals)
             individuals = ga_random_resetting(individuals, cut_edges)
             f_vals = [f(partition, individuals)
@@ -399,6 +408,98 @@ def gap(G: dict[int: Node], PG: dict[int: Node]) -> dict[int, list[int]]:
     return partition
 
 
+def flatten_partition(partition: dict[int: list[int]]) -> list[int]:
+    ...
+
+
+def write_results(path: str, physical_graph_path: str, partition: dict[int: list[int]]) -> None:
+    global R2, ITER_MAX, PENALTY, CUT_RATIO
+
+    HEADERS: list[str] = [
+        'graph',
+        'physical_graph',
+        'P_mut',
+        'ITER_MAX',
+        'cut_ratio',
+        'Penalty',
+        'cut_ratio_limitation',
+        'f',
+        'partition',
+    ]
+
+    line2write = [
+        path.split('/')[-1],
+        physical_graph_path.split('/')[-1],
+        R2,
+        ITER_MAX,
+        calc_cut_ratio(partition=partition),
+        PENALTY,
+        CUT_RATIO,
+        f(partition),
+        dict(partition),
+        '\n',
+    ]
+
+    with open(path, 'a+') as file:
+        file.write(' '.join(map(str, line2write)))
+
+    # print(' '.join(map(str, line2write)))
+
+
+def research() -> None:
+    global ITER_MAX, R2, CUT_RATIO
+    graph_dirs = [
+        (r'../data/sausages', r'../results/GAP/sausages'),
+        (r'../data/triangle/graphs', r'../results/GAP/triangle'),
+    ]
+
+    physical_graph_dirs = [
+        r'../data/physical_graphs',
+    ]   
+
+    iter_max_list = [
+        20, 50, 100
+    ]
+
+    r2_list = [
+        0.05, 0.07, 0.1
+    ]
+
+    print('3')
+
+
+    for input_dir, output_dir in graph_dirs:
+        for graph_file in listdir(input_dir):
+            # print(join(input_dir, graph_file))
+            if isfile(join(input_dir, graph_file)):
+                # print(join(input_dir, graph_file))
+                for physical_graph_dir in physical_graph_dirs:
+                    for physical_graph in listdir(physical_graph_dir):
+                        if isfile(join(physical_graph_dir, physical_graph)):
+                            for _ in range(5):
+                                for cr in [0.5, 0.6, 0.7, 0.8]:
+                                    CUT_RATIO = cr
+                                    for i in iter_max_list:
+                                        ITER_MAX = i
+                                        for r2 in r2_list:
+                                            R2 = r2
+                                            partition = do_gap(graph_path=join(input_dir, graph_file), physical_graph_path=join(physical_graph_dir, physical_graph))
+                                            write_results(join(output_dir, graph_file), join(physical_graph_dir, physical_graph), partition)
+
+
+def do_gap(graph_path: str, physical_graph_path: str) -> dict[int: list[int]]:
+    global k, G, PG
+
+    print(graph_path, physical_graph_path)
+
+    G = input_graph_from_file(graph_path)
+    PG = input_graph_from_file(physical_graph_path)
+
+    k = len(PG)
+
+    return gap(G, PG)
+
+
 if __name__ == '__main__':
     # необходимо чтобы граф был связный
     # достаточно(для запуска алгоритма), чтобы было верно следующее:
@@ -406,41 +507,43 @@ if __name__ == '__main__':
     # minimum_cut/2 (точнее количество вершин, которые принадлежат этим рёбрам)
     # ещё лучше, если значение выражения больше желаемого размера популяции
     
-    G = input_graph_from_file(r'../data/triangle/graphs/triadag10_0.txt')
-    G = input_graph_from_file(r'../data/sausages/dagA0.txt')
+    # G = input_graph_from_file(r'../data/triangle/graphs/triadag10_0.txt')
+    # G = input_graph_from_file(r'../data/sausages/dagA0.txt')
     # G = input_graph_from_file(r'../data/trash/graph100.txt')
     # G = input_graph_from_file(r'../data/trash/graph10.txt')
     # G = input_graph_from_file(r'../data/trash/test1.txt')
-    G = input_graph_from_file(r'../data/trash/gap2.txt')
+    # G = input_graph_from_file(r'../data/trash/gap2.txt')
     # G = input_graph_from_file(r'../data/trash/hetero0.txt')
     # G = input_graph_from_file(r'../data/trash/hetero1.txt')
 
     # PG = input_graph_from_file(r'../data/test_gp/0.txt')
-    PG = input_graph_from_file(r'../data/test_gp/homo3.txt')
+    # PG = input_graph_from_file(r'../data/test_gp/homo3.txt')
 
     # print(G)
     # print(PG)
 
-    k = len(PG)
+    # k = len(PG)
     # print(k)
 
     # R1 = 1
     # R2 = 0.15
-    ITER_MAX = 100
+    # ITER_MAX = 100
 
-    partition = gap(G, PG)
+    # partition = gap(G, PG)
 
-    e = []
-    for proc in partition:
-        for node in partition[proc]:
-            e.append(node)
+    # e = []
+    # for proc in partition:
+    #     for node in partition[proc]:
+    #         e.append(node)
 
-    assert len(e) == len(G)
-    assert len(set(e)) == len(set(G))
+    # assert len(e) == len(G)
+    # assert len(set(e)) == len(set(G))
 
-    print('final partition :', partition)
-    print('result for final partition: ', f(partition))
+    # print('final partition :', partition)
+    # print('result for final partition: ', f(partition))
 
-    print('cut_edges:', get_cut_edges(partition))
+    # print('cut_edges:', get_cut_edges(partition))
 
-    print('cut_ratio:', calc_cut_ratio(partition))
+    # print('cut_ratio:', calc_cut_ratio(partition))
+
+    research()
