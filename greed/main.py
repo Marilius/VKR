@@ -2,7 +2,6 @@
 from os import listdir
 from os.path import isfile, join
 
-import matplotlib.pyplot as plt
 import networkx as nx
 import metis
 from copy import deepcopy 
@@ -161,7 +160,12 @@ def postprocessing_phase(G: nx.Graph, PG: nx.Graph, partition: list[int]) -> lis
 
 
 def do_metis(G: nx.Graph, PG: nx.Graph) -> list[int]:
-    (edgecuts, partition) = metis.part_graph(G, len(PG))
+    ufactor = 1
+    (edgecuts, partition) = metis.part_graph(G, len(PG), objtype='vol', ncuts=10, ufactor=ufactor)
+    while f(G, PG, partition) > BIG_NUMBER:
+        ufactor *= 2
+        (edgecuts, partition) = metis.part_graph(G, len(PG), objtype='vol', ncuts=10, ufactor=ufactor)
+        
     return partition
 
 
@@ -226,28 +230,29 @@ def research() -> None:
 
     print('3')
 
-
-    for _ in range(5):
-        for cr in [0.5, 0.6, 0.7, 0.8]:
-            CUT_RATIO = cr
-            for input_dir, output_dir in graph_dirs:
-                for graph_file in listdir(input_dir):
-                    # print(join(input_dir, graph_file))
-                    if isfile(join(input_dir, graph_file)):
-                        # print(join(input_dir, graph_file))
-                        for physical_graph_dir in physical_graph_dirs:
-                            for physical_graph_path in listdir(physical_graph_dir):
-                                if isfile(join(physical_graph_dir, physical_graph_path)):
+    for input_dir, output_dir in graph_dirs:
+        for graph_file in listdir(input_dir):
+            # print(join(input_dir, graph_file))
+            if isfile(join(input_dir, graph_file)):
+                # print(join(input_dir, graph_file))
+                for physical_graph_dir in physical_graph_dirs:
+                    for physical_graph_path in listdir(physical_graph_dir):
+                        if isfile(join(physical_graph_dir, physical_graph_path)):
+                            for _ in range(5):
+                                for cr in [0.5, 0.6, 0.7, 0.8, 0.9, 1]:
+                                    CUT_RATIO = cr
                                     weighted_graph = input_networkx_graph_from_file(join(input_dir, graph_file))
                                     unweighted_graph = input_networkx_unweighted_graph_from_file(join(input_dir, graph_file))
                                     physical_graph = input_networkx_graph_from_file(join(physical_graph_dir, physical_graph_path))
                                     # weighted
                                     initial_weighted_partition = do_metis(weighted_graph, physical_graph)
+                                    write_results(join(output_dir.format('weighted/'), graph_file).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_weighted_partition, weighted_graph, physical_graph)
                                     weighted_partition = do_greed(weighted_graph, physical_graph, initial_weighted_partition)
                                     write_results(join(output_dir.format('weighted/'), graph_file), join(physical_graph_dir, physical_graph_path), weighted_partition, weighted_graph, physical_graph)
 
                                     # unweighted
                                     initial_unweighted_partition = do_metis(unweighted_graph, physical_graph)
+                                    write_results(join(output_dir.format('unweighted/'), graph_file).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_unweighted_partition, weighted_graph, physical_graph)
                                     unweighted_partition = do_greed(weighted_graph, physical_graph, initial_unweighted_partition)
                                     write_results(join(output_dir.format('unweighted/'), graph_file), join(physical_graph_dir, physical_graph_path), unweighted_partition, weighted_graph, physical_graph)
 

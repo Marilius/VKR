@@ -477,7 +477,7 @@ def research() -> None:
                     for physical_graph in listdir(physical_graph_dir):
                         if isfile(join(physical_graph_dir, physical_graph)):
                             for _ in range(5):
-                                for cr in [0.5, 0.6, 0.7, 0.8]:
+                                for cr in [0.5, 0.6, 0.7, 0.8, 0.9, 1]:
                                     CUT_RATIO = cr
                                     for i in iter_max_list:
                                         ITER_MAX = i
