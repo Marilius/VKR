@@ -2,9 +2,13 @@
 from os import listdir
 from os.path import isfile, join
 
+import sys
+
 import networkx as nx
 import metis
 from copy import deepcopy 
+
+from collections import defaultdict
 
 
 CUT_RATIO = 0.7
@@ -88,8 +92,11 @@ def calc_edgecut(G: nx.Graph, partition: list[int]) -> int:
     edgecut = 0
     for edge in G.edges:
         node1, node2 = edge
+        # node1 = index_map[node1]
+        # node2 = index_map[node2]
         if partition[node1] != partition[node2]:
             edgecut += 1
+    
     return edgecut
 
 
@@ -161,12 +168,62 @@ def postprocessing_phase(G: nx.Graph, PG: nx.Graph, partition: list[int]) -> lis
 
 def do_metis(G: nx.Graph, PG: nx.Graph) -> list[int]:
     ufactor = 1
-    (edgecuts, partition) = metis.part_graph(G, len(PG), objtype='vol', ncuts=10, ufactor=ufactor)
-    while f(G, PG, partition) > BIG_NUMBER:
+    # print(G)
+    # print(G.nodes)
+    # print(G.edges)
+    (edgecuts, partition2parce) = metis.part_graph(G, len(PG), objtype='cut', ncuts=10, ufactor=ufactor, recursive=False)
+
+    partition = [0] * len(G.nodes)
+    
+    for new_i, i in enumerate(list(G.nodes)):
+        partition[i] = partition2parce[new_i]
+
+    assert edgecuts == calc_edgecut(G, partition)
+
+    # print('edgecuts: ', edgecuts, 'ufactor', ufactor)
+    # print('calc_edgecut: ', calc_edgecut(G, partition))
+    # print('cut_ratio: ', calc_cut_ratio(G, partition))
+    # # print(G)
+    # print(partition)
+    # print(*enumerate(partition))
+
+    # sums = defaultdict(int)
+    # for job, proc in enumerate(partition):
+    #     sums[proc] += G.nodes[job]['weight']
+
+    # print(sums)
+
+    # raise Exception
+    while not check_cut_ratio(G, partition):
+        print(ufactor)
+        # print('cutratio: ', calc_cut_ratio(G, partition))
         ufactor *= 2
-        (edgecuts, partition) = metis.part_graph(G, len(PG), objtype='vol', ncuts=10, ufactor=ufactor)
+        (edgecuts, partition2parce) = metis.part_graph(G, len(PG), objtype='cut', ncuts=10, ufactor=ufactor,)
+
+        # partition = [0] * len(G.nodes)
+        for new_i, i in enumerate(list(G.nodes)):
+            partition[i] = partition2parce[new_i]
+
+        assert edgecuts == calc_edgecut(G, partition)
+
+        # print(edgecuts)
+    
+    ans = partition.copy()
+    for _ in range(5):
+        ufactor *= 0.75
+        ufactor = int(ufactor)
+        if ufactor < 1:
+            break
         
-    return partition
+        print(ufactor)
+        (edgecuts, partition) = metis.part_graph(G, len(PG), objtype='cut', ncuts=10, ufactor=ufactor,)
+        if check_cut_ratio(G, partition):
+            # print(G)
+            # print(PG)
+            if f(G, PG, partition) < f(G, PG, ans):
+                ans = partition
+
+    return ans
 
 
 def do_greed(G: nx.Graph, PG: nx.Graph, partition: list[int]) -> list[int]:
@@ -192,15 +249,15 @@ def do_greed(G: nx.Graph, PG: nx.Graph, partition: list[int]) -> list[int]:
 def write_results(path: str, physical_graph_path: str, partition: dict[int: list[int]], G: nx.Graph, PG: nx.Graph) -> None:
     global R2, ITER_MAX, PENALTY, CUT_RATIO
 
-    HEADERS: list[str] = [
-        'graph',
-        'physical_graph',
-        'cut_ratio',
-        'PENALTY',
-        'cut_ratio_limitation',
-        'f',
-        'partition',
-    ]
+    # HEADERS: list[str] = [
+    #     'graph',
+    #     'physical_graph',
+    #     'cut_ratio',
+    #     'PENALTY',
+    #     'cut_ratio_limitation',
+    #     'f',
+    #     'partition',
+    # ]
 
     line2write = [
         path.split('/')[-1],
@@ -209,9 +266,27 @@ def write_results(path: str, physical_graph_path: str, partition: dict[int: list
         calc_cut_ratio(G=G, partition=partition),
         CUT_RATIO,
         f(G, PG, partition),
-        partition,
+        partition if check_cut_ratio(G, partition) else None,
         '\n',
     ]
+
+    count1 = 0
+    count2 = 0
+    num1 = 0
+    num2 = 0
+    print(path)
+    print(enumerate(G.nodes))
+    for job, proc in enumerate(partition):
+        # print(G.nodes[job])
+        if proc == 0:
+            num1 += G.nodes[job]['weight']
+            count1 += 1
+        elif proc == 1:
+            num2 += G.nodes[job]['weight']
+            count2 += 1
+
+    print('counts: ', count1, count2)
+    print('sums: ', num1, num2)
 
     with open(path, 'a+') as file:
         file.write(' '.join(map(str, line2write)))
@@ -222,6 +297,7 @@ def research() -> None:
     graph_dirs = [
         (r'../data/sausages', r'../results/greed/{}sausages'),
         (r'../data/triangle/graphs', r'../results/greed/{}triangle'),
+        (r'../data/testing_graphs', r'../results/greed/{}testing_graphs'),
     ]
 
     physical_graph_dirs = [
@@ -230,59 +306,72 @@ def research() -> None:
 
     print('3')
 
+    cr_list = [0.6, 2]
+
+    cr_list = [0.07, 0.1, 0.14, 0.2, 0.3, 0.4]
+
     for input_dir, output_dir in graph_dirs:
         for graph_file in listdir(input_dir):
-            # print(join(input_dir, graph_file))
-            if isfile(join(input_dir, graph_file)):
+            # print(join(input_dir, graph_f ile))
+            if isfile(join(input_dir, graph_file)): # and 'testing_metis.txt' in graph_file:
                 # print(join(input_dir, graph_file))
                 for physical_graph_dir in physical_graph_dirs:
                     for physical_graph_path in listdir(physical_graph_dir):
-                        if isfile(join(physical_graph_dir, physical_graph_path)):
-                            for _ in range(5):
-                                for cr in [0.5, 0.6, 0.7, 0.8, 0.9, 1]:
-                                    CUT_RATIO = cr
-                                    weighted_graph = input_networkx_graph_from_file(join(input_dir, graph_file))
-                                    unweighted_graph = input_networkx_unweighted_graph_from_file(join(input_dir, graph_file))
-                                    physical_graph = input_networkx_graph_from_file(join(physical_graph_dir, physical_graph_path))
-                                    # weighted
-                                    initial_weighted_partition = do_metis(weighted_graph, physical_graph)
-                                    write_results(join(output_dir.format('weighted/'), graph_file).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_weighted_partition, weighted_graph, physical_graph)
-                                    weighted_partition = do_greed(weighted_graph, physical_graph, initial_weighted_partition)
-                                    write_results(join(output_dir.format('weighted/'), graph_file), join(physical_graph_dir, physical_graph_path), weighted_partition, weighted_graph, physical_graph)
+                        if isfile(join(physical_graph_dir, physical_graph_path)) and '3_2x1correct.txt' in physical_graph_path:
+                            for cr in cr_list:
+                                # print(join(input_dir, graph_file))
+                                CUT_RATIO = cr
+                                weighted_graph = input_networkx_graph_from_file(join(input_dir, graph_file))
+                                unweighted_graph = input_networkx_unweighted_graph_from_file(join(input_dir, graph_file))
+                                physical_graph = input_networkx_graph_from_file(join(physical_graph_dir, physical_graph_path))
+                                # weighted
+                                initial_weighted_partition = do_metis(weighted_graph, physical_graph)
+                                write_results(join(output_dir.format('weighted/'), graph_file).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_weighted_partition, weighted_graph, physical_graph)
+                                weighted_partition = do_greed(weighted_graph, physical_graph, initial_weighted_partition)
+                                write_results(join(output_dir.format('weighted/'), graph_file), join(physical_graph_dir, physical_graph_path), weighted_partition, weighted_graph, physical_graph)
 
-                                    # unweighted
-                                    initial_unweighted_partition = do_metis(unweighted_graph, physical_graph)
-                                    write_results(join(output_dir.format('unweighted/'), graph_file).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_unweighted_partition, weighted_graph, physical_graph)
-                                    unweighted_partition = do_greed(weighted_graph, physical_graph, initial_unweighted_partition)
-                                    write_results(join(output_dir.format('unweighted/'), graph_file), join(physical_graph_dir, physical_graph_path), unweighted_partition, weighted_graph, physical_graph)
-
-
-# %%
-if __name__ == '__main__':    
-    # G = input_networkx_graph_from_file(r'../data/triangle/graphs/triadag10_0.txt')
-    # G = input_networkx_graph_from_file(r'../data/sausages/dagA0.txt')
-    # G = input_networkx_graph_from_file(r'../data/trash/graph100.txt')
-    # G = input_networkx_graph_from_file(r'../data/trash/graph10.txt')
-    # G = input_networkx_graph_from_file(r'../data/trash/test1.txt')
-    # G = input_networkx_graph_from_file(r'../data/trash/gap2.txt')
-    # G = input_networkx_graph_from_file(r'../data/trash/hetero0.txt')
-    # G = input_networkx_graph_from_file(r'../data/trash/hetero1.txt')
-
-    # PG = input_networkx_graph_from_file(r'../data/test_gp/0.txt')
-    # PG = input_networkx_graph_from_file(r'../data/test_gp/homo3.txt')
-
-    # nx.draw(G, with_labels=True)
-    # plt.show()
+                                # unweighted
+                                initial_unweighted_partition = do_metis(unweighted_graph, physical_graph)
+                                write_results(join(output_dir.format('unweighted/'), graph_file).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_unweighted_partition, weighted_graph, physical_graph)
+                                unweighted_partition = do_greed(weighted_graph, physical_graph, initial_unweighted_partition)
+                                write_results(join(output_dir.format('unweighted/'), graph_file), join(physical_graph_dir, physical_graph_path), unweighted_partition, weighted_graph, physical_graph)
+                                
 
 
-    # (edgecuts, partition) = metis.part_graph(G, len(PG))
-    # colors = ['red','blue','green']
-    # for i, p in enumerate(partition):
-        # G.nodes[i]['color'] = colors[p]
-    # nx.draw(G, with_labels=True)
-    # plt.show()
-    # print(edgecuts)
-    research()
-    
+def run() -> None:
+    ...
+
+
+if __name__ == '__main__':
+    match sys.argv[1:]:
+        case ['--G', g_path, '--PG', pg_path, '--CR', cr, '--OUTPUT_DIR', output_dir]:
+            CUT_RATIO = cr
+
+            weighted_graph = input_networkx_graph_from_file(g_path)
+            unweighted_graph = input_networkx_unweighted_graph_from_file(g_path)
+            physical_graph = input_networkx_graph_from_file(pg_path)
+
+            if output_dir.endswith('{}'):
+                pass
+            elif output_dir.endswith('/'):
+                output_dir += {}
+            else:
+                output_dir += '/{}'
+
+            graph_name = g_path.split('/')[-1]
+
+            # # weighted
+            # initial_weighted_partition = do_metis(weighted_graph, physical_graph)
+            # write_results(join(output_dir.format('weighted/'), graph_name).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_weighted_partition, weighted_graph, physical_graph)
+            # weighted_partition = do_greed(weighted_graph, physical_graph, initial_weighted_partition)
+            # write_results(join(output_dir.format('weighted/'), graph_name), join(physical_graph_dir, physical_graph_path), weighted_partition, weighted_graph, physical_graph)
+
+            # # unweighted
+            # initial_unweighted_partition = do_metis(unweighted_graph, physical_graph)
+            # write_results(join(output_dir.format('unweighted/'), graph_name).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_unweighted_partition, weighted_graph, physical_graph)
+            # unweighted_partition = do_greed(weighted_graph, physical_graph, initial_unweighted_partition)
+            # write_results(join(output_dir.format('unweighted/'), graph_name), join(physical_graph_dir, physical_graph_path), unweighted_partition, weighted_graph, physical_graph)
+        case _:
+            research()
 
 # %%
