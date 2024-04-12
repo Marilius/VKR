@@ -8,8 +8,11 @@ data_dirs = [
 
 
 def delete_recursive(path: str) -> None:
+    
     try:
         if isfile(path):
+            # if 'from_mk' not in path:
+                # return
             remove(path)
         else:
             for file in listdir(path):
@@ -22,5 +25,6 @@ def delete_recursive(path: str) -> None:
 
 
 if __name__ == '__main__':
+    # print('lol')
     for dir in data_dirs:
         delete_recursive(dir)

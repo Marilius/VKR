@@ -25,6 +25,7 @@ class GAP2(GAP):
         ) -> None:
         super().__init__(r1, r2, iter_max, cut_ratio, article)
         self.NAME = 'GAP2'
+        self.MK_DIR = './data_mk'
         self.NUM_OF_TRIES = num_of_tries
 
         if graph_dirs:
@@ -51,7 +52,7 @@ class GAP2(GAP):
         self.n = int(0.6*len(cut_edges))
 
         if self.n <= 1:
-            self.n = 2
+            self.n = 1
 
         individuals = []
         for _ in range(self.n):
@@ -119,22 +120,12 @@ class GAP2(GAP):
         self.n = len(PG)
 
         print('was there')
-        # raise Exception
 
         self.all_edges = self.get_edges(G)
         
         partition = None
         if not initial_partition:
-            # partition0 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             partition = self.get_initial_partition(G, PG, if_do_load=if_do_load, path=path, physical_graph_name=physical_graph_name)
-
-            # # partition = dict()
-            # for k in set(partition0):
-            #     partition[k] = []
-            
-            # for pos, v in enumerate(partition0):
-            #     partition[v].append(pos)
-
         else:
             partition = initial_partition
 
@@ -307,19 +298,13 @@ class GAP2(GAP):
 
 if __name__ == '__main__':
     print('lol')
-    # graph_dirs = [
-    #     (r'./data/testing_graphs', './results/GAP2/testing_graphs'),
-    # ]
 
     graph_dirs = [
-        (r'./data/sausages', './results/GAP2/sausages'),
-        (r'./data/triangle/graphs', './results/GAP2/triangle'),
         (r'./data/testing_graphs', './results/GAP2/testing_graphs'),
+        (r'./data/triangle/graphs', './results/GAP2/triangle'),
+        (r'./data/sausages', './results/GAP2/sausages'),
     ]
 
-    # part = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    
-    
     gap_algo = GAP2(article=True, graph_dirs=graph_dirs, iter_max=100)
     # graph_path = r'./data/triangle/graphs/triadag10_0.txt'
 

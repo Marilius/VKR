@@ -1,4 +1,4 @@
-from os import listdir
+from os import listdir, makedirs
 from os.path import isfile, join
 
 from collections import defaultdict
@@ -42,6 +42,7 @@ class GAP:
         self.ARTICLE = article
 
         self.NAME = 'GAP'
+        self.MK_DIR = '../data_mk'
 
         if graph_dirs:
             self.graph_dirs = graph_dirs
@@ -80,7 +81,40 @@ class GAP:
         if self.ARTICLE:
             self.iter_max_list = [50]
             self.r2_list = [0.07]
-            self.cr_list = [0.07, 0.2]
+            self.cr_list = [0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 1]
+
+
+    def unpack_mk(self, mk_partition: dict[int: list[int]], mk_data: list[int]) -> dict[int: list[int]]:
+        # print(mk_partition)
+        # print(mk_data)
+
+        ans = dict()
+        # mapping = dict()
+
+        # for mk_id, proc in enumerate(mk_partition):
+            # mapping[mk_id] = proc
+
+        # for i in range(len(mk_data)):
+            # ans[i] = mapping[ans[i]]
+
+        # print(mk_partition, '<----')
+        for proc, mk_ids in mk_partition.items():
+            # print(proc, mk_ids)
+            ans[proc] = []
+            for job, mk in enumerate(mk_data):
+                if mk in mk_ids:
+                    ans[proc].append(job)
+
+        return ans
+
+
+    def do_unpack_mk(self, mk_partition: dict[int: list[int]], mk_data_path: str) -> dict[int: list[int]]:
+        with open(mk_data_path, 'r') as file:
+            line = file.readline()
+            mk_data = list(map(int, line.split()))
+            print(mk_data, '!!!!!!!!!!!!!!!!!mk_data!!!!!!!!!!!!!!!!!!!!!!')
+
+            return self.unpack_mk(mk_partition, mk_data)
 
 
     def input_graph_from_file(self, path: str) -> dict[int: Node]:
@@ -547,6 +581,11 @@ class GAP:
             '\n',
         ]
 
+        if partition is not None:
+            assert partition, (path, partition)
+
+        makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
+
         print(f'writing results to: {path}')
         with open(path, 'a+') as file:
             file.write(' '.join(map(str, line2write)))
@@ -568,27 +607,31 @@ class GAP:
                                             self.ITER_MAX = i
                                             for r2 in self.r2_list:
                                                 self.R2 = r2
-                                                # initial partitionself.G = self.input_graph_from_file(graph_path)
-                                                # self.G = self.input_graph_from_file(join(input_dir, graph_file))
-                                                # self.PG = self.input_graph_from_file(join(physical_graph_dir, physical_graph))
+                                                # initial partition
+                                                # self.G = self.input_graph_from_file(graph_path)
+                                                G = self.input_graph_from_file(join(input_dir, graph_file))
 
-                                                # self.k = len(self.PG)
-                                                # self.all_edges = self.get_edges(self.G)
-                                                # initial_partition = self.initial_partition(self.G, self.PG)
-                                                # self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_initial'), join(physical_graph_dir, physical_graph), initial_partition)
+                                                self.G = G
+                                                self.PG = self.input_graph_from_file(join(physical_graph_dir, physical_graph))
+
+                                                self.k = len(self.PG)
+                                                self.all_edges = self.get_edges(self.G)
+                                                initial_partition = self.initial_partition(self.G, self.PG)
+                                                self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_initial'), join(physical_graph_dir, physical_graph), initial_partition)
 
                                                 partition = self.do_gap(graph_path=join(input_dir, graph_file), physical_graph_path=join(physical_graph_dir, physical_graph))
                                                 self.write_results(join(output_dir, graph_file), join(physical_graph_dir, physical_graph), partition)
                                                 # from metis
                                                 print('weighted_partition from metis')
-                                                # weighted_partition = self.do_gap(
-                                                #     graph_path=join(input_dir, graph_file),
-                                                #     physical_graph_path=join(physical_graph_dir, physical_graph),
-                                                #     if_do_load=True,
-                                                #     path=join(input_dir, graph_file).replace('data', 'results/metis/weighted'),
-                                                #     physical_graph_name=physical_graph
-                                                # )
-                                                # self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_metis/weighted'), join(physical_graph_dir, physical_graph), weighted_partition)
+                                                weighted_partition = self.do_gap(
+                                                    graph_path=join(input_dir, graph_file),
+                                                    physical_graph_path=join(physical_graph_dir, physical_graph),
+                                                    if_do_load=True,
+                                                    path=join(input_dir, graph_file).replace('data', 'results/metis/weighted'),
+                                                    physical_graph_name=physical_graph
+                                                )
+                                                assert weighted_partition, ('weighted_partition from metis', join(input_dir, graph_file),)
+                                                self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_metis/weighted'), join(physical_graph_dir, physical_graph), weighted_partition)
 
                                                 print('unweighted_partition from metis')
                                                 unweighted_partition = self.do_gap(
@@ -598,29 +641,75 @@ class GAP:
                                                     path=join(input_dir, graph_file).replace('data', 'results/metis/unweighted'),
                                                     physical_graph_name=physical_graph
                                                 )
+                                                assert unweighted_partition, ('unweighted_partition from metis', join(input_dir, graph_file),)
                                                 self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_metis/unweighted'), join(physical_graph_dir, physical_graph), unweighted_partition)
 
                                                 # from greed
-                                                # print('weighted_partition from greed')
-                                                # weighted_partition = self.do_gap(
-                                                #     graph_path=join(input_dir, graph_file),
-                                                #     physical_graph_path=join(physical_graph_dir, physical_graph),
-                                                #     if_do_load=True,
-                                                #     path=join(input_dir, graph_file).replace('data', 'results/greed/weighted'),
-                                                #     physical_graph_name=physical_graph
-                                                # )
-                                                # self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_greed/weighted'), join(physical_graph_dir, physical_graph), weighted_partition)
+                                                print('weighted_partition from greed')
+                                                weighted_partition = self.do_gap(
+                                                    graph_path=join(input_dir, graph_file),
+                                                    physical_graph_path=join(physical_graph_dir, physical_graph),
+                                                    if_do_load=True,
+                                                    path=join(input_dir, graph_file).replace('data', 'results/greed/weighted'),
+                                                    physical_graph_name=physical_graph
+                                                )
+                                                assert weighted_partition, ('weighted_partition from greed', join(input_dir, graph_file),)
+                                                self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_greed/weighted'), join(physical_graph_dir, physical_graph), weighted_partition)
 
-                                                # print('unweighted_partition from greed')
-                                                # unweighted_partition = self.do_gap(
-                                                #     graph_path=join(input_dir, graph_file),
-                                                #     physical_graph_path=join(physical_graph_dir, physical_graph),
-                                                #     if_do_load=True,
-                                                #     path=join(input_dir, graph_file).replace('data', 'results/greed/unweighted'),
-                                                #     physical_graph_name=physical_graph
-                                                # )
-                                                # self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_greed/unweighted'), join(physical_graph_dir, physical_graph), unweighted_partition)
+                                                print('unweighted_partition from greed')
+                                                unweighted_partition = self.do_gap(
+                                                    graph_path=join(input_dir, graph_file),
+                                                    physical_graph_path=join(physical_graph_dir, physical_graph),
+                                                    if_do_load=True,
+                                                    path=join(input_dir, graph_file).replace('data', 'results/greed/unweighted'),
+                                                    physical_graph_name=physical_graph
+                                                )
+                                                assert unweighted_partition, ('unweighted_partition from greed', join(input_dir, graph_file),)
+                                                self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_greed/unweighted'), join(physical_graph_dir, physical_graph), unweighted_partition)
 
+                                                # FROM MK
+                                                print('partition FROM WEIGHTED MK')
+                                                self.CUT_RATIO = 1
+                                                mk_path = self.MK_DIR + '/' + graph_file.replace('.', '_weighted.').replace('.', str(cr) + '.')
+                                                mk_data_path = self.MK_DIR + '/' + graph_file.replace('.', '_weighted.').replace('.txt', str(cr) + '.' + 'mapping')
+
+                                                weighted_partition = self.do_gap(
+                                                    graph_path=mk_path,
+                                                    physical_graph_path=join(physical_graph_dir, physical_graph),
+                                                )
+                                                self.CUT_RATIO = cr
+                                                weighted_partition = self.do_unpack_mk(weighted_partition, mk_data_path)
+                                                assert weighted_partition, ('weighted_partition FROM WEIGHTED MK', mk_path)
+                                                self.G = G
+                                                self.all_edges = self.get_edges(G)
+                                                self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_from_mk/weighted'), join(physical_graph_dir, physical_graph), weighted_partition)
+
+                                                print('partition FROM UNWEIGHTED MK')
+                                                self.CUT_RATIO = 1
+                                                mk_path = self.MK_DIR + '/' + graph_file.replace('.', '_unweighted.').replace('.', str(cr) + '.')
+                                                mk_data_path = self.MK_DIR + '/' + graph_file.replace('.', '_unweighted.').replace('.txt', str(cr) + '.' + 'mapping')
+
+                                                unweighted_partition = self.do_gap(
+                                                    graph_path=mk_path,
+                                                    physical_graph_path=join(physical_graph_dir, physical_graph),
+                                                )
+                                                print(self.f(unweighted_partition), '//////////before unpack////////////')
+                                                self.CUT_RATIO = cr
+                                                # print(unweighted_partition)
+                                                unweighted_partition = self.do_unpack_mk(unweighted_partition, mk_data_path)
+                                                # print(unweighted_partition)
+
+                                                assert unweighted_partition, ('unweighted_partition FROM UNWEIGHTED MK', mk_path)
+                                                self.G = G
+                                                self.all_edges = self.get_edges(G)
+                                                print(self.f(unweighted_partition), '//////////AFTER unpack////////////')
+                                                self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_from_mk/unweighted'), join(physical_graph_dir, physical_graph), unweighted_partition)
+                                                print(G)
+                                                print(self.calc_cut_ratio(unweighted_partition), cr)
+                                                print(mk_path)
+                                                # if cr == 0.2:
+                                                    # raise Exception
+                                                
 
     def do_gap(self, graph_path: str, physical_graph_path: str, if_do_load: bool = False, path: str = None, physical_graph_name: str = None) -> dict[int: list[int]]:
         print(graph_path, physical_graph_path)
@@ -635,9 +724,9 @@ class GAP:
 
 if __name__ == '__main__':
     graph_dirs = [
-        (r'../data/sausages', '../results/GAP/sausages'),
-        (r'../data/triangle/graphs', '../results/GAP/triangle'),
         (r'../data/testing_graphs', '../results/GAP/testing_graphs'),
+        (r'../data/triangle/graphs', '../results/GAP/triangle'),
+        (r'../data/sausages', '../results/GAP/sausages'),
     ]
     gap_alg = GAP(article=True, graph_dirs=graph_dirs)
     # необходимо чтобы граф был связный

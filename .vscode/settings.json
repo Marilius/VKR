@@ -4,7 +4,9 @@
         "edgecut",
         "edgecuts",
         "leftchild",
+        "ncuts",
         "networkx",
+        "nparts",
         "objtype",
         "rightchild"
     ],
