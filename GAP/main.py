@@ -599,7 +599,7 @@ class GAP:
                     # print(join(input_dir, graph_file))
                     for physical_graph_dir in self.physical_graph_dirs:
                         for physical_graph in listdir(physical_graph_dir):
-                            if isfile(join(physical_graph_dir, physical_graph)) and '3_2x1correct.txt' in physical_graph:
+                            if isfile(join(physical_graph_dir, physical_graph)): # and '3_2x1correct.txt' in physical_graph:
                                 for _ in range(5):
                                     for cr in self.cr_list:
                                         self.CUT_RATIO = cr

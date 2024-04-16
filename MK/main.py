@@ -5,6 +5,8 @@ import metis
 
 import os
 
+from collections import defaultdict
+
 
 class MK:
     def __init__(self, data_dirs: list[str]) -> None:
@@ -52,7 +54,11 @@ class MK:
             else:
                 recursive = False
 
+        if nparts == 1: # Floating point exception from metis ¯\_(ツ)_/¯
+            return [0] * len(G.nodes)
+
         (edgecuts, partition2parce) = metis.part_graph(G, nparts, objtype='cut', ncuts=10, ufactor=ufactor, recursive=recursive)
+        
         partition = [0] * len(G.nodes)
         
         for new_i, i in enumerate(list(G.nodes)):
@@ -86,6 +92,8 @@ class MK:
                 print(partition)
                 print(calc_cut_ratio(G, partition))
 
+                print(self.check_cut_ratio(G, partition))
+
                 if self.check_cut_ratio(G, partition):
                     print('was here')
                     if len(set(partition)) == n:
@@ -111,24 +119,25 @@ class MK:
                 ufactor += ufactor
             # print('--------')
     
-        if n_ans is None:
-            partition = self.do_metis(G, num_left, ufactor)
-            print(partition)
-            print(calc_cut_ratio(G, partition))
+        print('main ended')
 
-            if self.check_cut_ratio(G, partition):
-                print('was here')
-                if len(set(partition)) == n:
-                    num_left = n
-                    n_ans = n
-                    partition_ans = partition
-                else:
-                    num_right = n
+        partition = self.do_metis(G, num_right, ufactor)
+        print(partition)
+        print(calc_cut_ratio(G, partition))
 
-                if n_ans is None or len(set(partition)) > n_ans:
-                    num_left = len(set(partition)) - 1
-                    n_ans = len(set(partition))
-                    partition_ans = partition
+        if self.check_cut_ratio(G, partition):
+            if n_ans is None or len(set(partition)) > n_ans:
+                n_ans = num_right
+                partition_ans = partition
+
+        partition = self.do_metis(G, num_left, ufactor)
+        print(partition)
+        print(calc_cut_ratio(G, partition))
+
+        if self.check_cut_ratio(G, partition):
+            if n_ans is None or len(set(partition)) > n_ans:
+                n_ans = num_left
+                partition_ans = partition
 
         assert partition_ans, partition_ans
 
@@ -259,10 +268,14 @@ if __name__ == '__main__':
     # g_path = './data/testing_graphs/mk_test_tiny_ex.txt'
     # g_path = './data/testing_graphs/mk_test_mini_ex.txt'
     # g_path = './data/testing_graphs/mk_test_small_ex.txt'
-    # G = input_networkx_graph_from_file(g_path)
+    # g_path = './data/triangle/graphs/triadag10_3.txt'
+    g_path = './data/sausages/dagD39.txt' # 65 вершин
+    # g_path = './data/sausages/dagR62.txt' # 200 вершин
 
-    # pg_path = './data/physical_graphs/3_2x1correct.txt'
-    # PG = input_networkx_graph_from_file(pg_path)
+    G = input_networkx_graph_from_file(g_path)
+
+    pg_path = './data/physical_graphs/3_2x1.txt'
+    PG = input_networkx_graph_from_file(pg_path)
 
     graph_dirs = [
         './data/testing_graphs',
@@ -272,26 +285,41 @@ if __name__ == '__main__':
 
     mk = MK(data_dirs=graph_dirs)
 
-    mk.research()
+    # mk.research()
 
-    # mk.CUT_RATIO = 1
+    mk.CUT_RATIO = 0.07
+    mk.CUT_RATIO = 0.4
+    mk.CUT_RATIO = 0.45
+    # mk.CUT_RATIO = 0.454
+    # mk.CUT_RATIO = 0.47
+    # mk.CUT_RATIO = 0.48
+    # mk.CUT_RATIO = 0.5
 
     # G.remove_edges_from(list(G.edges))
+    # nparts = 32
 
-    # partition = mk.do_metis(G, 60, 1)
-    # (n, partition) = mk.mk_part(G, PG)
+    # partition = mk.do_metis(G, nparts, 800)
+    (n, partition) = mk.mk_part(G, PG)
 
-    # mk_graph = mk.group_mk(G, partition)
-    # print(partition)
-    # print(set(partition))
-    # print(len(set(partition)))
-    # print(calc_cut_ratio(G, partition))
+    print(partition)
+    print(set(partition))
+    print('num of groups: ', len(set(partition)))
+    print('partition CR: ', calc_cut_ratio(G, partition))
 
-    # for i in sorted(list(set(partition))):
-        # print(partition.count(i), end=' ')
-    # print()
+    weights = defaultdict(int)
+    for i, group in enumerate(partition):
+        weights[group] += G.nodes[i]['weight']
+    print('weights: ', sorted(weights.values()))
+    print(f'min weight: {min(weights.values())}, max weight: {max(weights.values())}')
+
+    for i in sorted(list(set(partition))):
+        print(partition.count(i), end=' ')
+    print()
+
+    mk_graph = mk.group_mk(G, partition)
 
     # print(G)
     # print(mk_graph)
 
-    # mk.write_mk('mk_test_small_ex.txt', mk_graph, partition)
+    mk.CUT_RATIO = 0.4
+    mk.write_mk(g_path.split('/')[-1].replace('.', '_weighted.'), mk_graph, partition)
