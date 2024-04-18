@@ -1,7 +1,5 @@
 from os import listdir, makedirs
-from os.path import isfile, join, exists
-
-from pathlib import Path
+from os.path import isfile, join
 
 import sys
 from time import sleep
@@ -15,6 +13,7 @@ CUT_RATIO = 0.7
 PENALTY = True
 BIG_NUMBER = 1e10
 MK_DIR = '../data_mk'
+ALL_CR_LIST = [i/100 for i in range(7, 100)] + [1]
 
 
 def input_networkx_graph_from_file(path: str) -> nx.Graph:
@@ -178,9 +177,6 @@ def do_metis(G: nx.Graph | None, PG: nx.Graph, recursive: bool | None = None) ->
             else:
                 recursive = False
     ufactor = 1
-    # print(G)
-    # print(G.nodes)
-    # print(G.edges)
 
     if G is None:
         return None
@@ -189,30 +185,12 @@ def do_metis(G: nx.Graph | None, PG: nx.Graph, recursive: bool | None = None) ->
 
     partition = [0] * len(G.nodes)
     
-    # print(G.nodes)
-
     for new_i, i in enumerate(list(G.nodes)):
         partition[i] = partition2parce[new_i]
 
     assert edgecuts == calc_edgecut(G, partition)
 
-    # print('edgecuts: ', edgecuts, 'ufactor', ufactor)
-    # print('calc_edgecut: ', calc_edgecut(G, partition))
-    # print('cut_ratio: ', calc_cut_ratio(G, partition))
-    # # print(G)
-    # print(partition)
-    # print(*enumerate(partition))
-
-    # sums = defaultdict(int)
-    # for job, proc in enumerate(partition):
-    #     sums[proc] += G.nodes[job]['weight']
-
-    # print(sums)
-
-    # raise Exception
     while not check_cut_ratio(G, partition):
-        # print(ufactor)
-        # print('cutratio: ', calc_cut_ratio(G, partition))
         ufactor *= 2
 
         if ufactor > 10e7:
@@ -220,17 +198,11 @@ def do_metis(G: nx.Graph | None, PG: nx.Graph, recursive: bool | None = None) ->
 
         (edgecuts, partition2parce) = metis.part_graph(G, len(PG), objtype='cut', ncuts=10, ufactor=ufactor,)
 
-        # partition = [0] * len(G.nodes)
         for new_i, i in enumerate(list(G.nodes)):
             partition[i] = partition2parce[new_i]
 
-        # print(calc_edgecut(G, partition), set(partition))
-        # print(partition.count(0), partition.count(1), partition.count(2), partition.count(3))
-
         assert edgecuts == calc_edgecut(G, partition)
 
-        # print(edgecuts)
-    
     ans = partition.copy()
     for _ in range(5):
         ufactor *= 0.75
@@ -238,11 +210,8 @@ def do_metis(G: nx.Graph | None, PG: nx.Graph, recursive: bool | None = None) ->
         if ufactor < 1:
             break
         
-        # print(ufactor)
         (edgecuts, partition) = metis.part_graph(G, len(PG), objtype='cut', ncuts=10, ufactor=ufactor,)
         if check_cut_ratio(G, partition):
-            # print(G)
-            # print(PG)
             if f(G, PG, partition) < f(G, PG, ans):
                 ans = partition
 
@@ -257,14 +226,6 @@ def do_greed(G: nx.Graph, PG: nx.Graph, partition: list[int]) -> list[int]:
     print('final partition: ', partition)
     print('f for final partition: ', f(G, PG, partition))
     print('cut_ratio for final partition: ', calc_cut_ratio(G, partition))
-
-    # color = []
-    # for i, p in enumerate(partition):
-    #     G.nodes[i]['color'] = 1/(p + 0.1)
-    #     color.append(1/(p + 1))
-
-    # nx.draw(G, node_color = color, with_labels=True, pos=nx.shell_layout(G))
-    # plt.show()
 
     return partition
 
@@ -292,6 +253,8 @@ def write_results(path: str, physical_graph_path: str, partition: dict[int: list
         partition if check_cut_ratio(G, partition) else None,
         '\n',
     ]
+
+    assert partition is None or len(G) == len(partition), (path, physical_graph_path, CUT_RATIO)
 
     print(path, line2write)
     makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
@@ -325,6 +288,69 @@ def do_unpack_mk(mk_partition: list[int], mk_data_path: str) -> list[int]:
         return unpack_mk(mk_partition, mk_data)
 
 
+def do_weighted_mk_with_geq_cr(
+        input_dir: str,
+        output_dir: str,
+        graph_file: str,
+        physical_graph_dir: str,
+        physical_graph_path: str,
+        cr0: float,
+        ) -> None:
+    global CUT_RATIO, ALL_CR_LIST
+
+    print('do_mk_with_geq_cr')
+
+    output_dir = output_dir.replace('results', 'results1')
+    weighted_graph = input_networkx_graph_from_file(join(input_dir, graph_file))
+    physical_graph = input_networkx_graph_from_file(join(physical_graph_dir, physical_graph_path))
+    output_dir_mk = output_dir.replace('greed', 'greed_from_mk_weighted')
+    
+    print('from mk weighted')
+
+    ans_init = None
+    ans_part = None
+    ans = None
+
+    for cr in ALL_CR_LIST:
+        if cr >= cr0:
+            mk_path = MK_DIR + '/' + graph_file.replace('.', '_weighted.').replace('.', str(cr) + '.')
+            mk_data_path = MK_DIR + '/' + graph_file.replace('.', '_weighted.').replace('.txt', str(cr) + '.' + 'mapping')
+
+            if not isfile(mk_path) or not isfile(mk_data_path):
+                continue
+
+            mk_graph_weighted = input_networkx_graph_from_file(mk_path)
+
+            CUT_RATIO = 1
+
+            initial_weighted_partition = do_metis(mk_graph_weighted, physical_graph)
+            assert initial_weighted_partition is not None
+            weighted_partition = do_greed(mk_graph_weighted, physical_graph, initial_weighted_partition)
+            assert weighted_partition is not None
+
+            initial_weighted_partition = do_unpack_mk(initial_weighted_partition, mk_data_path)
+            assert initial_weighted_partition is not None
+            weighted_partition = do_unpack_mk(weighted_partition, mk_data_path)
+            assert weighted_partition is not None
+
+            print('Am I even here***')
+
+            CUT_RATIO = cr0
+            if not check_cut_ratio(weighted_graph, weighted_partition):
+                print("I'm here... for some reason...")
+                break
+
+            if ans_part is None or f(weighted_graph, physical_graph, weighted_partition) < ans:
+                print('OKK????')
+                ans_init = initial_weighted_partition
+                ans_part = weighted_partition
+                ans = f(weighted_graph, physical_graph, weighted_partition)
+
+    CUT_RATIO = cr0
+    write_results(join(output_dir_mk.format('weighted/'), graph_file).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), ans_init, weighted_graph, physical_graph)
+    write_results(join(output_dir_mk.format('weighted/'), graph_file), join(physical_graph_dir, physical_graph_path), ans_part, weighted_graph, physical_graph)
+
+
 def research() -> None:
     global CUT_RATIO
     graph_dirs = [
@@ -339,17 +365,17 @@ def research() -> None:
 
     print('3')
 
-    cr_list = [0.6, 1]
-
-    cr_list = [0.07, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 1]
-    cr_list = [0.07, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 1]
-    cr_list = [0.4]
+    cr_list_little = [0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.2]
+    cr_list_big = [0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1]
+    cr_list = cr_list_little + cr_list_big
+    # cr_list = [0.4]
+    # cr_list = [1]
 
 
     for input_dir, output_dir in graph_dirs:
         for graph_file in listdir(input_dir):
             # print(join(input_dir, graph_f ile))
-            if isfile(join(input_dir, graph_file)) and 'dagD39.txt' in graph_file:
+            if isfile(join(input_dir, graph_file)) and 'triadag25_7.txt' in graph_file:
                 # print(join(input_dir, graph_file))
                 for physical_graph_dir in physical_graph_dirs:
                     for physical_graph_path in listdir(physical_graph_dir):
@@ -439,6 +465,8 @@ def research() -> None:
                                 # unweighted
                                 write_results(join(output_dir_mk.format('unweighted/'), graph_file).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_unweighted_partition, weighted_graph, physical_graph)
                                 write_results(join(output_dir_mk.format('unweighted/'), graph_file), join(physical_graph_dir, physical_graph_path), unweighted_partition, weighted_graph, physical_graph)
+
+                                do_weighted_mk_with_geq_cr(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path, cr)
 
 
 def run() -> None:

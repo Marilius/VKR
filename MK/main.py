@@ -22,6 +22,9 @@ class MK:
 
 
     def write_mk(self, g_name: str, G_grouped: nx.Graph, mk_partition: list[int]) -> None:
+        if self.CUT_RATIO == 1:
+            self.CUT_RATIO = 1
+
         output_file = self.output_folder.format(g_name.replace('.', str(self.CUT_RATIO) + '.'))
 
         # print(output_file, G_grouped)
@@ -157,45 +160,6 @@ class MK:
             # raise Exception
 
         return (n_ans, partition_ans)
-    
-
-    # def mk_part(self, G: nx.Graph, PG: nx.Graph) -> tuple[int, list[int]]:
-    #     num_left = len(PG)
-    #     num_right = len(G)
-
-    #     n_ans = None
-    #     partition_ans = None
-        
-    #     n = 0
-    #     ufactor = 0
-
-    #     for n in range(num_right, num_left, - 1):
-    #         ufactor = 1000
-    #         while True:
-    #             partition = self.do_metis(G, n, ufactor)
-    #             print(ufactor, n)
-    #             print(partition)
-
-    #             if self.check_cut_ratio(G, partition):
-    #                 if len(set(partition)) == n:
-    #                     n_ans = n
-    #                     partition_ans = partition
-    #                     break
-
-    #             if ufactor > 10000:
-    #                 print('ENDED BY UFACTOR')
-    #                 break
-
-    #             ufactor += ufactor
-
-    #         if n_ans == n:
-    #             break
-            
-    #         # TODO как менять ufactor?
-            
-    #         # print('--------')
-
-    #     return (n_ans, partition_ans)
 
 
     def group_mk(self, G: nx.Graph, partition: list[int], weighted: bool = True) -> nx.Graph:
@@ -222,14 +186,21 @@ class MK:
 
 
     def research(self) -> None:
-        cr_list = [0.07, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 1]
+        # cr_list_little = [0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.2]
+        # cr_list_big = [0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1]
+        # cr_list = cr_list_little + cr_list_big
+
+        cr_list = [i/100 for i in range(7, 100)] + [1]
+        # cr_list = [i/100 for i in range(100, 100)] 
+
+        # cr_list = [1]
 
         pg_path = './data/physical_graphs/3_2x1.txt'
         PG = input_networkx_graph_from_file(pg_path)
 
         for input_dir in self.data_dirs:
             for graph_file in os.listdir(input_dir):
-                if os.path.isfile(os.path.join(input_dir, graph_file)): # and 'mk_test' in graph_file:
+                if os.path.isfile(os.path.join(input_dir, graph_file)): # and 'triadag25_7.txt' in graph_file:
                     g_path = os.path.join(input_dir, graph_file)
                     print(g_path)
                     for cr in cr_list:
@@ -285,11 +256,11 @@ if __name__ == '__main__':
 
     mk = MK(data_dirs=graph_dirs)
 
-    # mk.research()
+    mk.research()
 
-    mk.CUT_RATIO = 0.07
-    mk.CUT_RATIO = 0.4
-    mk.CUT_RATIO = 0.45
+    # mk.CUT_RATIO = 0.07
+    # mk.CUT_RATIO = 0.4
+    # mk.CUT_RATIO = 0.45
     # mk.CUT_RATIO = 0.454
     # mk.CUT_RATIO = 0.47
     # mk.CUT_RATIO = 0.48
@@ -299,27 +270,27 @@ if __name__ == '__main__':
     # nparts = 32
 
     # partition = mk.do_metis(G, nparts, 800)
-    (n, partition) = mk.mk_part(G, PG)
+    # (n, partition) = mk.mk_part(G, PG)
 
-    print(partition)
-    print(set(partition))
-    print('num of groups: ', len(set(partition)))
-    print('partition CR: ', calc_cut_ratio(G, partition))
+    # print(partition)
+    # print(set(partition))
+    # print('num of groups: ', len(set(partition)))
+    # print('partition CR: ', calc_cut_ratio(G, partition))
 
-    weights = defaultdict(int)
-    for i, group in enumerate(partition):
-        weights[group] += G.nodes[i]['weight']
-    print('weights: ', sorted(weights.values()))
-    print(f'min weight: {min(weights.values())}, max weight: {max(weights.values())}')
+    # weights = defaultdict(int)
+    # for i, group in enumerate(partition):
+    #     weights[group] += G.nodes[i]['weight']
+    # print('weights: ', sorted(weights.values()))
+    # print(f'min weight: {min(weights.values())}, max weight: {max(weights.values())}')
 
-    for i in sorted(list(set(partition))):
-        print(partition.count(i), end=' ')
-    print()
+    # for i in sorted(list(set(partition))):
+    #     print(partition.count(i), end=' ')
+    # print()
 
-    mk_graph = mk.group_mk(G, partition)
+    # mk_graph = mk.group_mk(G, partition)
 
     # print(G)
     # print(mk_graph)
 
-    mk.CUT_RATIO = 0.4
-    mk.write_mk(g_path.split('/')[-1].replace('.', '_weighted.'), mk_graph, partition)
+    # mk.CUT_RATIO = 0.4
+    # mk.write_mk(g_path.split('/')[-1].replace('.', '_weighted.'), mk_graph, partition)
