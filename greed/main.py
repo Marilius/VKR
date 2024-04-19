@@ -490,17 +490,5 @@ if __name__ == '__main__':
                 output_dir += '/{}'
 
             graph_name = g_path.split('/')[-1]
-
-            # # weighted
-            # initial_weighted_partition = do_metis(weighted_graph, physical_graph)
-            # write_results(join(output_dir.format('weighted/'), graph_name).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_weighted_partition, weighted_graph, physical_graph)
-            # weighted_partition = do_greed(weighted_graph, physical_graph, initial_weighted_partition)
-            # write_results(join(output_dir.format('weighted/'), graph_name), join(physical_graph_dir, physical_graph_path), weighted_partition, weighted_graph, physical_graph)
-
-            # # unweighted
-            # initial_unweighted_partition = do_metis(unweighted_graph, physical_graph)
-            # write_results(join(output_dir.format('unweighted/'), graph_name).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_unweighted_partition, weighted_graph, physical_graph)
-            # unweighted_partition = do_greed(weighted_graph, physical_graph, initial_unweighted_partition)
-            # write_results(join(output_dir.format('unweighted/'), graph_name), join(physical_graph_dir, physical_graph_path), unweighted_partition, weighted_graph, physical_graph)
         case _:
             research()

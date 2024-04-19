@@ -1,0 +1,5 @@
+name weight children
+0 10 1 2 
+1 24 2 
+2 86 3 
+3 80 
