@@ -5,8 +5,6 @@ import metis
 
 import os
 
-from collections import defaultdict
-
 
 class MK:
     def __init__(self, data_dirs: list[str]) -> None:
@@ -191,9 +189,6 @@ class MK:
         # cr_list = cr_list_little + cr_list_big
 
         cr_list = [i/100 for i in range(7, 100)] + [1]
-        # cr_list = [i/100 for i in range(100, 100)] 
-
-        # cr_list = [1]
 
         pg_path = './data/physical_graphs/3_2x1.txt'
         PG = input_networkx_graph_from_file(pg_path)
@@ -236,18 +231,6 @@ class MK:
 
 
 if __name__ == '__main__':
-    # g_path = './data/testing_graphs/mk_test_tiny_ex.txt'
-    # g_path = './data/testing_graphs/mk_test_mini_ex.txt'
-    # g_path = './data/testing_graphs/mk_test_small_ex.txt'
-    # g_path = './data/triangle/graphs/triadag10_3.txt'
-    g_path = './data/sausages/dagD39.txt' # 65 вершин
-    # g_path = './data/sausages/dagR62.txt' # 200 вершин
-
-    G = input_networkx_graph_from_file(g_path)
-
-    pg_path = './data/physical_graphs/3_2x1.txt'
-    PG = input_networkx_graph_from_file(pg_path)
-
     graph_dirs = [
         './data/testing_graphs',
         './data/triangle/graphs',
@@ -258,39 +241,3 @@ if __name__ == '__main__':
 
     mk.research()
 
-    # mk.CUT_RATIO = 0.07
-    # mk.CUT_RATIO = 0.4
-    # mk.CUT_RATIO = 0.45
-    # mk.CUT_RATIO = 0.454
-    # mk.CUT_RATIO = 0.47
-    # mk.CUT_RATIO = 0.48
-    # mk.CUT_RATIO = 0.5
-
-    # G.remove_edges_from(list(G.edges))
-    # nparts = 32
-
-    # partition = mk.do_metis(G, nparts, 800)
-    # (n, partition) = mk.mk_part(G, PG)
-
-    # print(partition)
-    # print(set(partition))
-    # print('num of groups: ', len(set(partition)))
-    # print('partition CR: ', calc_cut_ratio(G, partition))
-
-    # weights = defaultdict(int)
-    # for i, group in enumerate(partition):
-    #     weights[group] += G.nodes[i]['weight']
-    # print('weights: ', sorted(weights.values()))
-    # print(f'min weight: {min(weights.values())}, max weight: {max(weights.values())}')
-
-    # for i in sorted(list(set(partition))):
-    #     print(partition.count(i), end=' ')
-    # print()
-
-    # mk_graph = mk.group_mk(G, partition)
-
-    # print(G)
-    # print(mk_graph)
-
-    # mk.CUT_RATIO = 0.4
-    # mk.write_mk(g_path.split('/')[-1].replace('.', '_weighted.'), mk_graph, partition)

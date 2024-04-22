@@ -49,7 +49,7 @@ class GAP2(GAP):
 
         # if not self.n:
         self.n = int(0.4*len(cut_edges))
-        self.n = int(0.6*len(cut_edges))
+        # self.n = int(0.6*len(cut_edges))
 
         if self.n <= 1:
             self.n = 1
@@ -59,6 +59,7 @@ class GAP2(GAP):
             new_individual = []
             n_tries = 1000
             while len(new_individual) < self.k and n_tries:
+                a = choice(v_cut)
                 a = choice(v_cut + [-1])
                 if a not in new_individual:
                     new_individual.append(a)
@@ -117,7 +118,7 @@ class GAP2(GAP):
 
         num_of_tries = self.NUM_OF_TRIES
 
-        self.n = len(PG)
+        # self.n = len(PG)
 
         print('was there')
 
