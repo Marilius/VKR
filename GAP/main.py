@@ -42,21 +42,21 @@ class GAP:
         self.ARTICLE = article
 
         self.NAME = 'GAP'
-        self.MK_DIR = '../data_mk'
+        self.MK_DIR = './data_mk'
 
         if graph_dirs:
             self.graph_dirs = graph_dirs
         else:
             self.graph_dirs = [
-                (r'../data/sausages', f'../results/{self.NAME}/sausages'),
-                (r'../data/triangle/graphs', f'../results/{self.NAME}/triangle'),
+                (r'./data/sausages', f'./results/{self.NAME}/sausages'),
+                (r'./data/triangle/graphs', f'./results/{self.NAME}/triangle'),
             ]
 
         if physical_graph_dirs:
             self.physical_graph_dirs = physical_graph_dirs
         else:
             self.physical_graph_dirs = [
-                r'../data/physical_graphs',
+                r'./data/physical_graphs',
             ]
 
         if iter_max_list:
@@ -85,21 +85,8 @@ class GAP:
 
 
     def unpack_mk(self, mk_partition: dict[int: list[int]], mk_data: list[int]) -> dict[int: list[int]]:
-        # print(mk_partition)
-        # print(mk_data)
-
         ans = dict()
-        # mapping = dict()
-
-        # for mk_id, proc in enumerate(mk_partition):
-            # mapping[mk_id] = proc
-
-        # for i in range(len(mk_data)):
-            # ans[i] = mapping[ans[i]]
-
-        # print(mk_partition, '<----')
         for proc, mk_ids in mk_partition.items():
-            # print(proc, mk_ids)
             ans[proc] = []
             for job, mk in enumerate(mk_data):
                 if mk in mk_ids:
@@ -313,7 +300,8 @@ class GAP:
                 a = choice(v_cut)
                 if a not in new_individual:
                     new_individual.append(a)
-                n_tries -= 1
+                else:
+                    n_tries -= 1
             if n_tries == 0:
                 return []
             individuals.append(new_individual)
@@ -724,9 +712,9 @@ class GAP:
 
 if __name__ == '__main__':
     graph_dirs = [
-        (r'../data/testing_graphs', '../results/GAP/testing_graphs'),
-        (r'../data/triangle/graphs', '../results/GAP/triangle'),
-        (r'../data/sausages', '../results/GAP/sausages'),
+        (r'./data/sausages', './results/GAP/sausages'),
+        (r'./data/triangle/graphs', './results/GAP/triangle'),
+        (r'./data/testing_graphs', './results/GAP/testing_graphs'),
     ]
     gap_alg = GAP(article=True, graph_dirs=graph_dirs)
     # необходимо чтобы граф был связный

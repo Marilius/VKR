@@ -88,7 +88,7 @@ class MK:
             print(n)
 
             ufactor = 1
-            while True:
+            while True: 
                 partition = self.do_metis(G, n, ufactor)
                 print(partition)
                 print(calc_cut_ratio(G, partition))
