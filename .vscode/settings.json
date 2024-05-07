@@ -1,4 +1,6 @@
 {
+    "python.languageServer": "Pylance",
+    "python.analysis.typeCheckingMode": "basic",
     "cSpell.words": [
         "dendrogram",
         "edgecut",

@@ -1,18 +1,14 @@
+from helpers import input_networkx_graph_from_file, calc_cut_ratio, do_unpack_mk
+
 from os import listdir, makedirs
 from os.path import isfile, join
 
-from collections import defaultdict
-from copy import deepcopy
-from dataclasses import dataclass
 from random import choice, randint
 import math
 import json
 
+import networkx as nx
 
-@dataclass
-class Node:
-    size: float
-    children: list[str]
 
 class GAP:
     def __init__(
@@ -27,22 +23,22 @@ class GAP:
             iter_max_list: list[int] | None = None,
             r2_list: list[float] | None = None,
             cr_list: list[float] | None = None
-        ) -> None:
-        self.all_edges = None
-        self.n = None
-        self.k = None
-        self.PG = None
-        self.G = None
+    ) -> None:
+        self.all_edges: list[tuple[int, int]]
+        self.n: int
+        self.k: int
+        self.PG: nx.Graph
+        self.G: nx.Graph
         self.R1 = r1
         self.R2 = r2
-        self.ITER_MAX = iter_max
-        self.BIG_NUMBER = 1e10
-        self.PENALTY = True
-        self.CUT_RATIO = cut_ratio
-        self.ARTICLE = article
+        self.ITER_MAX: int = iter_max
+        self.BIG_NUMBER: float = 1e10
+        self.PENALTY: bool = True
+        self.CUT_RATIO: float = cut_ratio
+        self.ARTICLE: bool = article
 
-        self.NAME = 'GAP'
-        self.MK_DIR = './data_mk'
+        self.NAME: str = 'GAP'
+        self.MK_DIR: str = './data_mk'
 
         if graph_dirs:
             self.graph_dirs = graph_dirs
@@ -83,107 +79,41 @@ class GAP:
             self.r2_list = [0.07]
             self.cr_list = [0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 1]
 
+    def calc_power(self, PG: nx.Graph) -> list[float]:
+        ans: list[float] = [0] * len(PG)
 
-    def unpack_mk(self, mk_partition: dict[int: list[int]], mk_data: list[int]) -> dict[int: list[int]]:
-        ans = dict()
-        for proc, mk_ids in mk_partition.items():
-            ans[proc] = []
-            for job, mk in enumerate(mk_data):
-                if mk in mk_ids:
-                    ans[proc].append(job)
+        s: float = sum(data['weight'] for _, data in PG.nodes(data=True))
+        for node, data in PG.nodes(data=True):
+            ans[node] = data['weight'] / s
 
         return ans
 
-
-    def do_unpack_mk(self, mk_partition: dict[int: list[int]], mk_data_path: str) -> dict[int: list[int]]:
-        with open(mk_data_path, 'r') as file:
-            line = file.readline()
-            mk_data = list(map(int, line.split()))
-            print(mk_data, '!!!!!!!!!!!!!!!!!mk_data!!!!!!!!!!!!!!!!!!!!!!')
-
-            return self.unpack_mk(mk_partition, mk_data)
-
-
-    def input_graph_from_file(self, path: str) -> dict[int: Node]:
-        graph = dict()
-        with open(path, 'r') as f:
-            for line in f.readlines()[1:]:
-                name, size, *children = map(float, line.strip().split())
-                name = int(name)
-                children = list(map(int, children))
-                if name not in graph:
-                    graph[name] = Node(size, children)
-        return graph
-
-
-    def calc_power(self, PG: dict[int: Node]) -> list[float]:
-        ans = []
-        s = sum(node.size for node in PG.values())
-        for node in PG.values():
-            ans.append(node.size / s)
-
-        return ans
-
-
-    def calc_edgecut(self, partition: dict[int, list[int]]) -> int:
-        edgecut = 0
-
-        for edge in self.all_edges:
-            node1, node2 = edge
-
-            for i in partition:
-                if node1 in partition[i] and node2 in partition[i]:
-                    break
-            else:
-                edgecut += 1
-
-        return edgecut
-
-
-    def calc_cut_ratio(self, partition: dict[int, list[int]]) -> float:
-        if len(self.all_edges):
-            return self.calc_edgecut(partition) / len(self.all_edges)
-
-        return 0
-
-
-    def get_cut_edges(self, partition: dict[int, list[int]]) -> list[tuple[int, int]]:
+    def get_cut_edges(self, partition: list[int]) -> list[tuple[int, int]]:
         edges = []
 
         for edge in self.all_edges:
             node1, node2 = edge
 
-            for i in partition:
-                if node1 in partition[i] and node2 in partition[i]:
-                    break
-            else:
+            if partition[node1] != partition[node2]:
                 edges.append(edge)
 
         return edges
 
-
     def get_cut_nodes(self, cut_edges: list[tuple[int, int]]) -> list[int]:
         v_cut = set()
 
-        for node1 in self.G:
-            for node2 in self.G[node1].children:
-                if (node1, node2) in cut_edges:
-                    v_cut.add(node1)
+        for edge in cut_edges:
+            (node1, node2) = edge
+            v_cut.add(node1)
+            v_cut.add(node2)
 
-        # print(v_cut)
         v_cut = list(v_cut)
         return v_cut
 
+    def get_edges(self, G: nx.Graph) -> list[tuple[int, int]]:
+        return [edge for edge in G.edges]
 
-    def get_edges(self, G: dict[int: Node]) -> list[tuple[int, int]]:
-        edges = []
-        for node in G:
-            for node2 in G[node].children:
-                edges.append((node, node2))
-        return edges
-
-
-    def metis_partition(self, partition_path: str, physical_graph_name: str, *args, **kwargs) -> dict[int, list[int]]:
+    def metis_partition(self, partition_path: str, physical_graph_name: str, *args, **kwargs) -> list[int]:
         # HEADERS = [
         #     'graph',
         #     'physical_graph',
@@ -195,7 +125,7 @@ class GAP:
         # ]
         print(partition_path, physical_graph_name)
         print(self.PENALTY, self.CUT_RATIO)
-        partition = defaultdict(list)
+        partition = list()
         with open(partition_path, 'r') as file:
             lines = file.readlines()
             for line in lines:
@@ -205,30 +135,23 @@ class GAP:
                 Penalty = bool(Penalty)
                 cut_ratio_limitation = float(cut_ratio_limitation)
                 f_val = float(f_val)
-                _partition = json.loads(_partition)
+                partition = json.loads(_partition)
 
                 print(physical_graph)
                 print(graph)
 
-
                 print('------', partition_path, line, '-----------')
-                if graph in partition_path and physical_graph in physical_graph_name and self.PENALTY == Penalty and self.CUT_RATIO == cut_ratio_limitation:
-                    for job, proc in enumerate(_partition):
-                        partition[proc].append(job)
-                    break
+
         print(partition)
         print(self.f(partition))
 
         print(partition)
 
-        assert len(self.flatten_partition(partition)) == len(self.G), (partition_path, physical_graph_name, len(self.flatten_partition(partition)), len(self.G), partition)
-
-        # raise(Exception)
+        assert len(partition) == len(self.G), (partition_path, physical_graph_name, len(partition), len(self.G), partition)
 
         return partition
 
-
-    def initial_partition(self, G: dict[int: Node], PG: dict[int: Node]) -> dict[int, list[int]]:
+    def initial_partition(self, G: nx.Graph, PG: nx.Graph) -> list[int]:
         """Input: G = (V, E)
         Output: P = {P1, . . . ,Pk , Pi = (Vi, Ei), i = 1, 2, . . . , k
         1. s ← 1
@@ -241,7 +164,7 @@ class GAP:
         8. E_cut ← {(va, vb)|va ∈ Vi, vb ∈ Vj, i != j}
         9. return P and E_cut
         """
-        partition = defaultdict(list)
+        partition = [0] * len(G.nodes)
         r = self.calc_power(PG)
 
         s = 0
@@ -249,7 +172,7 @@ class GAP:
             t = int(len(G) * r[i])
             # print(i, t)
 
-            # костыль, которого в статье не было: 
+            # костыль, которого в статье не было:
             t = max(t, 1)
             # -------------------- но артефакт забавный - если мощность процессора слишком маленькая/мало вершин в графе, то на него не назначается ни одной работы 
 
@@ -258,20 +181,18 @@ class GAP:
                 s2 = len(G)
 
             for j in range(s, s2):
-                partition[i].append(j)
+                partition[j] = i
 
             s += t
 
         return partition
 
-
-    def get_initial_partition(self, G: dict[int: Node], PG: dict[int: Node], if_do_load: bool = False, path: str = None, physical_graph_name: str = None) -> dict[int, list[int]]:
-        if if_do_load:
+    def get_initial_partition(self, G: nx.Graph, PG: nx.Graph, if_do_load: bool = False, path: str | None = None, physical_graph_name: str | None = None) -> list[int]:
+        if if_do_load and path and physical_graph_name:
             return self.metis_partition(path, physical_graph_name)
         return self.initial_partition(G, PG)
 
-
-    def ga_initialization(self, G: dict[int: Node], cut_edges: list[tuple[int, int]]) -> list[list[int]]:
+    def ga_initialization(self, cut_edges: list[tuple[int, int]]) -> list[list[int]]:
         """Input: the set of cut edges E_cut
         Output: the set of individuals X
         1. V_cut = {va|va ∈ V, ∃vb ∈ V,(va, vb) ∈ E_cut}	
@@ -308,7 +229,6 @@ class GAP:
 
         return individuals
 
-
     def ga_one_point_crossover(self, individuals: list[list[int]]) -> list[list[int]]:
         """Input: the set of individuals X
         Output: the updated set of individuals X
@@ -342,9 +262,8 @@ class GAP:
                 assert len(new_individual) == self.k
 
                 individuals.append(new_individual)
-        
-        return individuals
 
+        return individuals
 
     def ga_random_resetting(self, individuals: list[list[int]], cut_edges: list[tuple[int, int]]) -> list[list[int]]:
         """
@@ -372,42 +291,45 @@ class GAP:
             individuals[a][b] = v
         return individuals
 
+    def f(self, partition: list[int] | None, individual: list[int] | None = None) -> float:
+        assert isinstance(self.G, nx.Graph)
 
-    def f(self, partition: dict[int, list[int]] | None, individual: list[int] = None) -> float:
         if partition is None:
             return 2 * self.BIG_NUMBER
 
-        new_partition = deepcopy(partition)
+        new_partition = partition.copy()
 
         if individual is not None:
             for j in range(self.k):
                 v = individual[j]
                 if v == -1:
                     continue
-                for z in range(self.k):
-                    if v in new_partition[z]:
-                        new_partition[z].remove(v)
-                new_partition[j].append(v)
+                new_partition[v] = j
+
+        # print(self.G)
 
         t_max = 0
-        for proc in new_partition:
-            t_curr = 0
+        times = [0] * self.k
+        for job, proc in enumerate(new_partition):
+            # print(self.G)
+            # print('->', job, self.G[job])
+            times[proc] += self.G.nodes[job]['weight']
 
-            for node in new_partition[proc]:
-                t_curr += self.G[node].size
-            t_curr /= self.PG[proc].size
+            # for node in new_partition[proc]:
+            #    t_curr += self.G[node].size
+        for proc in range(self.k):
+            times[proc] /= self.PG.nodes[proc]['weight']
 
-            if t_curr > t_max:
-                t_max = t_curr
+        t_max = max(times)
 
         if self.PENALTY:
-            if self.calc_cut_ratio(new_partition) > self.CUT_RATIO:
+            cr = calc_cut_ratio(self.G, new_partition)
+            if cr is None or cr > self.CUT_RATIO:
                 t_max += self.BIG_NUMBER
 
         return t_max
 
-
-    def gap(self, G: dict[int: Node], PG: dict[int: Node], if_do_load: bool = False, path: str = None, physical_graph_name: str = None, initial_partition: dict[int, list[int]] | None = None) -> dict[int, list[int]]:
+    def gap(self, G: nx.Graph, PG: nx.Graph, if_do_load: bool = False, path: str | None = None, physical_graph_name: str | None = None, initial_partition: list[int] | None = None) -> list[int]:
         """Input: G = (V, E)
         Output: P = P1, . . . , Pk , Pi = (Vi, Ei), i = 1, 2, . . . , k
         1. Call Algorithm 1 to obtain the initial partition P
@@ -449,7 +371,7 @@ class GAP:
         if initial_partition is None:
             partition = self.get_initial_partition(G, PG, if_do_load=if_do_load, path=path, physical_graph_name=physical_graph_name)
         else:
-            partition = deepcopy(initial_partition)
+            partition = initial_partition.copy()
 
         print('initial_partition :', partition)
         print('result for initial_partition: ', self.f(partition))
@@ -459,12 +381,12 @@ class GAP:
         flag_iter = False
         epoch = 0
         while flag:
-            print(f'epoch: {epoch}, f_curr: {f_curr}, current cut_ratio: {self.calc_cut_ratio(partition)}')
+            print(f'epoch: {epoch}, f_curr: {f_curr}, current cut_ratio: {calc_cut_ratio(G, partition)}')
             flag = False
 
             cut_edges = self.get_cut_edges(partition)
 
-            individuals = self.ga_initialization(G, cut_edges)
+            individuals = self.ga_initialization(cut_edges)
 
             ######
             if not individuals:
@@ -482,8 +404,9 @@ class GAP:
 
                 individuals = self.ga_one_point_crossover(individuals)
                 individuals = self.ga_random_resetting(individuals, cut_edges)
-                f_vals = [self.f(partition, individuals)
-                        for individuals in individuals[:self.n]]
+                f_vals = [
+                    self.f(partition, individuals) for individuals in individuals[:self.n]
+                    ]
                 f_avg = sum(f_vals) / len(f_vals)
 
                 j = 0
@@ -517,11 +440,7 @@ class GAP:
                 for j in range(self.k):
                     v = individual_best[j]
 
-                    for z in range(self.k):
-                        if v in partition[z]:
-                            partition[z].remove(v)
-
-                    partition[j].append(v)
+                    partition[v] = j
 
                 f_curr = f_best
 
@@ -532,18 +451,16 @@ class GAP:
 
         return partition
 
+    # def flatten_partition(self, partition: dict[int: list[int]]) -> list[int]:
+    #     flat_partition = []
+    #     n = len(self.G)
+    #     for i in range(n):
+    #         for proc in partition:
+    #             if i in partition[proc]:
+    #                 flat_partition.append(proc)
+    #     return flat_partition
 
-    def flatten_partition(self, partition: dict[int: list[int]]) -> list[int]:
-        flat_partition = []
-        n = len(self.G)
-        for i in range(n):
-            for proc in partition:
-                if i in partition[proc]:
-                    flat_partition.append(proc)
-        return flat_partition
-
-
-    def write_results(self, path: str, physical_graph_path: str, partition: dict[int: list[int]]) -> None:
+    def write_results(self, path: str, physical_graph_path: str, partition: list[int]) -> None:
         # HEADERS: list[str] = [
         #     'graph',
         #     'physical_graph',
@@ -561,11 +478,11 @@ class GAP:
             physical_graph_path.split('/')[-1],
             self.R2,
             self.ITER_MAX,
-            self.calc_cut_ratio(partition=partition),
+            calc_cut_ratio(self.G, partition=partition),
             self.PENALTY,
             self.CUT_RATIO,
             self.f(partition),
-            self.flatten_partition(dict(partition)) if self.calc_cut_ratio(partition) <= self.CUT_RATIO else None,
+            partition if (cr := calc_cut_ratio(self.G, partition) is None) or cr <= self.CUT_RATIO else None,
             '\n',
         ]
 
@@ -578,16 +495,15 @@ class GAP:
         with open(path, 'a+') as file:
             file.write(' '.join(map(str, line2write)))
 
-
     def research(self) -> None:
         for input_dir, output_dir in self.graph_dirs:
             for graph_file in listdir(input_dir):
                 # print(join(input_dir, graph_file))
-                if isfile(join(input_dir, graph_file)): #'K46' in graph_file: # in graph_file:
+                if isfile(join(input_dir, graph_file)):  # 'K46' in graph_file: # in graph_file:
                     # print(join(input_dir, graph_file))
                     for physical_graph_dir in self.physical_graph_dirs:
                         for physical_graph in listdir(physical_graph_dir):
-                            if isfile(join(physical_graph_dir, physical_graph)): # and '3_2x1correct.txt' in physical_graph:
+                            if isfile(join(physical_graph_dir, physical_graph)):  # and '3_2x1correct.txt' in physical_graph:
                                 for _ in range(5):
                                     for cr in self.cr_list:
                                         self.CUT_RATIO = cr
@@ -597,10 +513,10 @@ class GAP:
                                                 self.R2 = r2
                                                 # initial partition
                                                 # self.G = self.input_graph_from_file(graph_path)
-                                                G = self.input_graph_from_file(join(input_dir, graph_file))
+                                                G = input_networkx_graph_from_file(join(input_dir, graph_file))
 
                                                 self.G = G
-                                                self.PG = self.input_graph_from_file(join(physical_graph_dir, physical_graph))
+                                                self.PG = input_networkx_graph_from_file(join(physical_graph_dir, physical_graph))
 
                                                 self.k = len(self.PG)
                                                 self.all_edges = self.get_edges(self.G)
@@ -666,7 +582,7 @@ class GAP:
                                                     physical_graph_path=join(physical_graph_dir, physical_graph),
                                                 )
                                                 self.CUT_RATIO = cr
-                                                weighted_partition = self.do_unpack_mk(weighted_partition, mk_data_path)
+                                                weighted_partition = do_unpack_mk(weighted_partition, mk_data_path)
                                                 assert weighted_partition, ('weighted_partition FROM WEIGHTED MK', mk_path)
                                                 self.G = G
                                                 self.all_edges = self.get_edges(G)
@@ -684,7 +600,7 @@ class GAP:
                                                 print(self.f(unweighted_partition), '//////////before unpack////////////')
                                                 self.CUT_RATIO = cr
                                                 # print(unweighted_partition)
-                                                unweighted_partition = self.do_unpack_mk(unweighted_partition, mk_data_path)
+                                                unweighted_partition = do_unpack_mk(unweighted_partition, mk_data_path)
                                                 # print(unweighted_partition)
 
                                                 assert unweighted_partition, ('unweighted_partition FROM UNWEIGHTED MK', mk_path)
@@ -693,43 +609,17 @@ class GAP:
                                                 print(self.f(unweighted_partition), '//////////AFTER unpack////////////')
                                                 self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_from_mk/unweighted'), join(physical_graph_dir, physical_graph), unweighted_partition)
                                                 print(G)
-                                                print(self.calc_cut_ratio(unweighted_partition), cr)
+                                                print(calc_cut_ratio(self.G, unweighted_partition), cr)
                                                 print(mk_path)
                                                 # if cr == 0.2:
-                                                    # raise Exception
-                                                
+                                                #   raise Exception
 
-    def do_gap(self, graph_path: str, physical_graph_path: str, if_do_load: bool = False, path: str = None, physical_graph_name: str = None) -> dict[int: list[int]]:
+    def do_gap(self, graph_path: str, physical_graph_path: str, if_do_load: bool = False, path: str | None = None, physical_graph_name: str | None = None) -> list[int]:
         print(graph_path, physical_graph_path)
 
-        self.G = self.input_graph_from_file(graph_path)
-        self.PG = self.input_graph_from_file(physical_graph_path)
+        self.G: nx.Graph = input_networkx_graph_from_file(graph_path)
+        self.PG: nx.Graph = input_networkx_graph_from_file(physical_graph_path)
 
         self.k = len(self.PG)
 
         return self.gap(self.G, self.PG, if_do_load=if_do_load, path=path, physical_graph_name=physical_graph_name)
-
-
-if __name__ == '__main__':
-    graph_dirs = [
-        (r'./data/sausages', './results/GAP/sausages'),
-        (r'./data/triangle/graphs', './results/GAP/triangle'),
-        (r'./data/testing_graphs', './results/GAP/testing_graphs'),
-    ]
-    gap_alg = GAP(article=True, graph_dirs=graph_dirs)
-    # необходимо чтобы граф был связный
-    # достаточно(для запуска алгоритма), чтобы было верно следующее:
-    # (minimum_cut/2)*R0 >= кол-во процессоров
-    # minimum_cut/2 (точнее количество вершин, которые принадлежат этим рёбрам)
-    # ещё лучше, если значение выражения больше желаемого размера популяции
-
-    # graph_name = r'../data/sausages/dagA0.txt'
-    # physical_graph_name = r'../data/physical_graphs/1234x3.txt'
-    # G = input_graph_from_file(graph_name)
-    # PG = input_graph_from_file(physical_graph_name)    
-
-    # physical_graph_dirs = [
-    #     r'../data/physical_graphs',
-    # ]
-
-    gap_alg.research()
