@@ -24,6 +24,11 @@ def input_networkx_graph_from_file(path: str) -> nx.Graph:
             G.add_node(name, weight=size)
             G.add_edges_from((name, child) for child in children)
     G.graph['node_weight_attr'] = 'weight'
+    
+    mk = 'mk_' if 'data_mk' in path else ''
+
+    graph_name = mk + path.split('/')[-1].split('.')[0]
+    G.graph['graph_name'] = graph_name
 
     return G
 
@@ -46,6 +51,12 @@ def input_networkx_unweighted_graph_from_file(path: str) -> nx.Graph:
             children = list(map(int, children))
             G.add_node(name, weight=1)
             G.add_edges_from((name, child) for child in children)
+
+    graph_name = path.split('/')[-1].split('.')[0]
+    mk = 'mk_' if 'data_mk' in path else ''
+
+    G.graph['graph_name'] = mk + graph_name
+    
     return G
 
 

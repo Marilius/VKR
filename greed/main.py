@@ -1,17 +1,19 @@
-from helpers import input_networkx_graph_from_file, input_networkx_unweighted_graph_from_file, calc_edgecut, calc_cut_ratio, do_unpack_mk
+from helpers import input_networkx_graph_from_file, input_networkx_unweighted_graph_from_file, calc_edgecut, calc_cut_ratio, do_unpack_mk, unpack_mk
 from MK import MK
+from base_partitioner import Partitioner
 
 from os import listdir, makedirs
 from os.path import isfile, join
 
+from time import sleep
 
 import networkx as nx
-import metis
 
 
-class Greed:
+class Greed(Partitioner):
     def __init__(self) -> None:
         self.MK_DIR: str = './data_mk'
+        self.CACHE_DIR: str = './cache'
         self.ALL_CR_LIST: list[float] = [i/100 for i in range(7, 100)] + [1]
         self.BIG_NUMBER: float = 1e10
         self.PENALTY: bool = True
@@ -48,31 +50,6 @@ class Greed:
         with open(path, 'a+') as file:
             file.write(' '.join(map(str, line2write)))
 
-    def f(self, G: nx.Graph | None, PG: nx.Graph, partition: list[int] | None) -> float:
-        p_loads = [0] * len(PG)
-
-        if G is None or partition is None:
-            return 2 * self.BIG_NUMBER
-
-        for i in range(len(partition)):
-            p_loads[partition[i]] += G.nodes[i]['weight']
-
-        for i in range(len(PG)):
-            p_loads[i] /= PG.nodes[i]['weight'] 
-
-        penalty = 0
-
-        if self.PENALTY:
-            penalty = 0 if self.check_cut_ratio(G, partition) else self.BIG_NUMBER
-
-        return max(p_loads) + penalty
-
-    def check_cut_ratio(self, G: nx.Graph | None, partition: list[int] | None) -> bool:
-        if G is None or partition is None:
-            return False
-
-        return calc_cut_ratio(G, partition) <= self.CUT_RATIO  # type: ignore
-
     def postprocessing_phase(self, G: nx.Graph | None, PG: nx.Graph, partition: list[int] | None) -> list[int] | None:
         # The postprocessing phase has the following scheme.
         # 1) Select the most loaded processor; denote it as P1;
@@ -96,6 +73,8 @@ class Greed:
 
         flag = True
         while flag:
+            if 'mk_' in G.graph['graph_name']:
+                print(partition)
 
             p1 = None
             p1_time = 0
@@ -138,67 +117,82 @@ class Greed:
                     break
 
         return partition
-
-    def do_metis(self, G: nx.Graph | None, PG: nx.Graph | None, recursive: bool | None = None) -> list[int] | None:
-        if G is None or PG is None:
-            return None
-
-        if recursive is None:
-            if (len(PG) > 8):
-                recursive = True
-            else:
-                recursive = False
-        ufactor = 1
-
-        (edgecuts, partition2parse) = metis.part_graph(G, len(PG), objtype='cut', ncuts=10, ufactor=ufactor, recursive=recursive)
-
-        partition = [0] * len(G.nodes)
-
-        for new_i, i in enumerate(list(G.nodes)):
-            partition[i] = partition2parse[new_i]
-
-        assert edgecuts == calc_edgecut(G, partition)
-
-        while not self.check_cut_ratio(G, partition):
-            ufactor *= 2
-
-            if ufactor > 10e7:
-                return None
-
-            (edgecuts, partition2parse) = metis.part_graph(G, len(PG), objtype='cut', ncuts=10, ufactor=ufactor,)
-
-            for new_i, i in enumerate(list(G.nodes)):
-                partition[i] = partition2parse[new_i]
-
-            assert edgecuts == calc_edgecut(G, partition)
-
-        ans = partition.copy()
-        for _ in range(5):
-            ufactor *= 0.75
-            ufactor = int(ufactor)
-            if ufactor < 1:
-                break
-
-            (edgecuts, partition) = metis.part_graph(G, len(PG), objtype='cut', ncuts=10, ufactor=ufactor,)
-            if self.check_cut_ratio(G, partition):
-                if self.f(G, PG, partition) < self.f(G, PG, ans):
-                    ans = partition
-
-        return ans
     
-    def MK_greed_greed(self, G: nx.Graph, PG: nx.Graph) -> list[int]:
+    def MK_greed_greed(self, G: nx.Graph, PG: nx.Graph) -> list[int] | None:
         max_mk = self.mk.get_num_mk(G, self.CUT_RATIO)
 
-        best_f: float
-        best_partition: list[int]
-        for n_parts in range(1, max_mk + 1):
-            ...
-        # 2) для каждого k от 1 до МАКС_МК:
-        # - попытаться найти при помощи МЕТИСа набор из k штук МК (желательно с как можно меньшим ufactor)
-        # - если нашёлся, то запустить на нём связку ЖА_МК+ЖА_обычный (результат - распределение работ "в исходном смысле" по процессорам)
-        # 3) в качестве итогового распределение взять лучшее из найденных на шаге 2
+        best_partition: list[int] | None = self.do_metis(G, PG)
+        best_f: float = self.f(G, PG, best_partition)
+
+        n = 0
+        if best_partition:
+            n = len(set(best_partition))
+
+        assert self.do_metis(G, PG) == self.do_metis(G, PG)
+
+        cr0 = self.CUT_RATIO
+
+        assert n <= max_mk, (n, max_mk)
+
+
+        for nparts in range(1, max_mk + 1):
+            (G_grouped, mk_data) = self.mk.mk_nparts(G, nparts, self.CUT_RATIO, 1e4)
+
+            print('MK DATA: ', mk_data)
+            # sleep(10)
+
+            if G_grouped is None or mk_data is None:
+                continue
+
+            self.CUT_RATIO = 1
+            # print(G_grouped)
+            # print(G_grouped.nodes)
+            mk_partition = self.do_metis(G_grouped, PG, check_cache=True)
+            self.CUT_RATIO = cr0
+            # if mk_partition:
+                # print('MK PARTITION: ', self.check_cut_ratio(G, mk_partition), mk_partition)
+
+            if mk_partition is None:
+                continue
+
+            mk_partition_unpacked = unpack_mk(mk_partition, mk_data)
+            if self.check_cut_ratio(G_grouped, mk_partition_unpacked):
+                partition = self.postprocessing_phase(G, PG, mk_partition_unpacked)
+                # sleep(1)
+                f_val = self.f(G, PG, partition)
+
+                if f_val < best_f:
+                    best_f = self.f(G, PG, partition)
+                    if partition:
+                        best_partition = partition.copy()
+                    else:
+                        best_partition = partition
+
+        assert self.f(G, PG, partition) >= self.f(G, PG, best_partition)
+        assert self.f(G, PG, best_partition) <= self.f(G, PG, self.do_metis(G, PG))
 
         return best_partition
+    
+    def do_MK_greed_greed(
+        self,
+        input_dir: str,
+        output_dir: str,
+        graph_file: str,
+        physical_graph_dir: str,
+        physical_graph_path: str,
+    ) -> None:
+        print('do_MK_greed_greed')
+
+        output_dir = output_dir.replace('results', 'results2')
+        weighted_graph = input_networkx_graph_from_file(join(input_dir, graph_file))
+        physical_graph = input_networkx_graph_from_file(join(physical_graph_dir, physical_graph_path))
+        output_dir_mk = output_dir.replace('greed', 'MK_greed_greed_weighted')
+
+        partition = self.MK_greed_greed(weighted_graph, physical_graph)
+
+        # assert self.f(weighted_graph, physical_graph, partition) <= self.f(weighted_graph, physical_graph, self.just_weighted_partition)
+
+        self.write_results(join(output_dir_mk.format('weighted/'), graph_file), join(physical_graph_dir, physical_graph_path), partition, weighted_graph, physical_graph)
 
     def do_greed(self, G: nx.Graph, PG: nx.Graph, partition: list[int] | None) -> list[int] | None:
         print('initial partition: ', partition)
@@ -212,14 +206,14 @@ class Greed:
         return partition
 
     def do_weighted_mk_with_geq_cr(
-            self,
-            input_dir: str,
-            output_dir: str,
-            graph_file: str,
-            physical_graph_dir: str,
-            physical_graph_path: str,
-            cr0: float,
-            ) -> None:
+        self,
+        input_dir: str,
+        output_dir: str,
+        graph_file: str,
+        physical_graph_dir: str,
+        physical_graph_path: str,
+        cr0: float,
+    ) -> None:
         print('do_mk_with_geq_cr')
 
         output_dir = output_dir.replace('results', 'results1')
@@ -245,7 +239,7 @@ class Greed:
 
                 self.CUT_RATIO = 1
 
-                initial_weighted_partition = self.do_metis(mk_graph_weighted, physical_graph)
+                initial_weighted_partition = self.do_metis(mk_graph_weighted, physical_graph, check_cache=True)
                 assert initial_weighted_partition is not None
                 weighted_partition = self.do_greed(mk_graph_weighted, physical_graph, initial_weighted_partition)
                 assert weighted_partition is not None
@@ -277,6 +271,7 @@ class Greed:
             (r'./data/testing_graphs', r'./results/greed/{}testing_graphs'),
             (r'./data/triangle/graphs', r'./results/greed/{}triangle'),
             (r'./data/sausages', r'./results/greed/{}sausages'),
+            (r'./data/rand', r'./results/greed/{}rand'),
         ]
 
         physical_graph_dirs = [
@@ -290,11 +285,12 @@ class Greed:
         cr_list = cr_list_little + cr_list_big
         # cr_list = [0.4]
         # cr_list = [1]
+        cr_list = [0.2]
 
         for input_dir, output_dir in graph_dirs:
             for graph_file in listdir(input_dir):
                 # print(join(input_dir, graph_f ile))
-                if isfile(join(input_dir, graph_file)) and 'dagP38' in graph_file:
+                if isfile(join(input_dir, graph_file)): #and 'dagP38' in graph_file:
                     # print(join(input_dir, graph_file))
                     for physical_graph_dir in physical_graph_dirs:
                         for physical_graph_path in listdir(physical_graph_dir):
@@ -310,6 +306,11 @@ class Greed:
                                     self.write_results(join(output_dir.format('weighted/'), graph_file).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_weighted_partition, weighted_graph, physical_graph)
                                     weighted_partition = self.do_greed(weighted_graph, physical_graph, initial_weighted_partition)
                                     self.write_results(join(output_dir.format('weighted/'), graph_file), join(physical_graph_dir, physical_graph_path), weighted_partition, weighted_graph, physical_graph)
+
+                                    # if weighted_partition:
+                                    #     self.just_weighted_partition = weighted_partition.copy()
+                                    # else:
+                                    #     self.just_weighted_partition = weighted_partition
 
                                     # # unweighted
                                     initial_unweighted_partition = self.do_metis(unweighted_graph, physical_graph)
@@ -329,8 +330,8 @@ class Greed:
                                     # print(join(input_dir, graph_file))
                                     # print(mk_path)
 
-                                    initial_weighted_partition = self.do_metis(mk_graph_weighted, physical_graph)
-                                    initial_unweighted_partition = self.do_metis(mk_graph_unweighted, physical_graph)
+                                    initial_weighted_partition = self.do_metis(mk_graph_weighted, physical_graph, check_cache=True)
+                                    initial_unweighted_partition = self.do_metis(mk_graph_unweighted, physical_graph, check_cache=True)
                                     weighted_partition = self.do_greed(mk_graph_weighted, physical_graph, initial_weighted_partition)
                                     unweighted_partition = self.do_greed(mk_graph_weighted, physical_graph, initial_unweighted_partition)
 
@@ -364,8 +365,8 @@ class Greed:
                                     # print(join(input_dir, graph_file))
                                     # print(mk_path)
 
-                                    initial_weighted_partition = self.do_metis(mk_graph_weighted, physical_graph)
-                                    initial_unweighted_partition = self.do_metis(mk_graph_unweighted, physical_graph)
+                                    initial_weighted_partition = self.do_metis(mk_graph_weighted, physical_graph, check_cache=True)
+                                    initial_unweighted_partition = self.do_metis(mk_graph_unweighted, physical_graph, check_cache=True)
                                     weighted_partition = self.do_greed(mk_graph_weighted, physical_graph, initial_weighted_partition)
                                     unweighted_partition = self.do_greed(mk_graph_weighted, physical_graph, initial_unweighted_partition)
 
@@ -385,3 +386,4 @@ class Greed:
                                     self.write_results(join(output_dir_mk.format('unweighted/'), graph_file), join(physical_graph_dir, physical_graph_path), unweighted_partition, weighted_graph, physical_graph)
 
                                     self.do_weighted_mk_with_geq_cr(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path, cr)
+                                    self.do_MK_greed_greed(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path)
