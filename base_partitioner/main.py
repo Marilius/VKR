@@ -9,29 +9,28 @@ import networkx as nx
 import metis
 
 class BasePartitioner:
-    def __init__(self) -> None:
+    def __init__(
+            self,
+            cut_ratio: float | None = None
+    ) -> None:
         self.MK_DIR: str = './data_mk'
         self.CACHE_DIR: str = './cache'
         self.ALL_CR_LIST: list[float] = [i/100 for i in range(7, 100)] + [1]
         self.BIG_NUMBER: float = 1e10
         self.PENALTY: bool = True
-        self.CUT_RATIO: float = 0.7
+        self.CUT_RATIO: float | None = cut_ratio
 
     @staticmethod
-    def metis_part(G: nx.Graph, nparts: int, ufactor: int, recursive: bool) -> tuple[int, list[int]]:
-        # print('here')
+    def metis_part(G: nx.Graph, nparts: int, ufactor: int, recursive: bool | None = None) -> tuple[int, list[int]]:
+        if recursive is None:
+            recursive = nparts > 8
+
         if nparts == 1:
             return (0, [0] * len(G.nodes))
 
         (edgecuts, partition2parse) = metis.part_graph(G, nparts, objtype='cut', ncuts=10, ufactor=ufactor, recursive=recursive)
-        # print('not here')
 
         partition = [0] * len(G.nodes)
-
-        print(partition, partition2parse)
-        print(list(G.nodes))
-
-        print(*enumerate(list(G.nodes)))
 
         for new_i, i in enumerate(list(G.nodes)):
             partition[i] = partition2parse[new_i]
@@ -40,8 +39,6 @@ class BasePartitioner:
             for j in range(len(partition)):
                 if partition[j] == i:
                     partition[j] = new_i
-
-        assert edgecuts == calc_edgecut(G, partition)
 
         return (edgecuts, partition)
 
@@ -70,13 +67,7 @@ class BasePartitioner:
 
         return max(p_loads) + penalty
     
-    def load_metis_cache(self, G: nx.Graph, PG: nx.Graph, recursive: bool) -> list[int] | None:
-        nparts: int
-        if isinstance(PG, nx.Graph):
-            nparts = len(PG)
-        else:
-            nparts = PG
-
+    def load_metis_cache(self, G: nx.Graph, nparts: int, recursive: bool) -> list[int] | None:
         weighted = '_weighted_' if 'node_weight_attr' in G.graph else '_!'
         path = self.CACHE_DIR + '/' + G.graph['graph_name'] + weighted + str(nparts) + '!_' + str(self.CUT_RATIO) + '_' + str(recursive) + '.txt'
 
@@ -92,13 +83,7 @@ class BasePartitioner:
         
         return None
 
-    def write_metis_cache(self, G: nx.Graph, PG: nx.Graph | int, recursive: bool, partition: list[int] | None) -> None:
-        nparts: int
-        if isinstance(PG, nx.Graph):
-            nparts = len(PG)
-        else:
-            nparts = PG
-        
+    def write_metis_cache(self, G: nx.Graph, nparts: int, recursive: bool, partition: list[int] | None) -> None:
         weighted = '_w_' if 'node_weight_attr' in G.graph else '_!'
         path = self.CACHE_DIR + '/' + G.graph['graph_name'] + weighted + str(nparts) + '!_' + str(self.CUT_RATIO) + '_' + str(recursive) + '.txt'
 
@@ -110,30 +95,25 @@ class BasePartitioner:
             else:
                 file.write('None')
 
-    def do_metis(self, G: nx.Graph | None, PG: nx.Graph | None, recursive: bool | None = None, check_cache: bool = True) -> list[int] | None:
-        if G is None or PG is None:
+    def do_metis(self, G: nx.Graph | None, nparts: int | None, recursive: bool | None = None, check_cache: bool = True) -> list[int] | None:
+        if G is None or nparts is None:
             return None
 
-        # if isinstance(PG, int):
-            # PG = self.get_homo_pg(PG)
-
         if recursive is None:
-            if (len(PG) > 8):
-                recursive = True
-            else:
-                recursive = False
+            recursive = nparts > 8
+
+        if nparts == 1:
+            return [0] * len(G)
 
         if check_cache:
-            partition = self.load_metis_cache(G, PG, recursive)
+            partition = self.load_metis_cache(G, nparts, recursive)
             if partition and len(partition) == len(G) and self.check_cut_ratio(G, partition):
                 return partition
 
-        if len(PG) == 1:
-            return [0] * len(G)
 
         ufactor = 1
 
-        (_, partition) = self.metis_part(G, len(PG), ufactor, recursive)
+        (_, partition) = self.metis_part(G, nparts, ufactor, recursive)
 
         while not self.check_cut_ratio(G, partition):
             ufactor *= 2
@@ -141,7 +121,9 @@ class BasePartitioner:
             if ufactor > 10e7:
                 return None
 
-            (_, partition) = self.metis_part(G, len(PG), ufactor, recursive)
+            (_, partition) = self.metis_part(G, nparts, ufactor, recursive)
+
+        # print(len(set(partition)))
 
         ans = partition.copy()
         for _ in range(5):
@@ -150,13 +132,14 @@ class BasePartitioner:
             if ufactor < 1:
                 break
 
-            (_, partition) = self.metis_part(G, len(PG), ufactor, recursive)
+            (_, partition) = self.metis_part(G, nparts, ufactor, recursive)
             if self.check_cut_ratio(G, partition):
-                # if self.f(G, PG, partition) < self.f(G, PG, ans):
                 ans = partition
 
         if check_cache:
-            self.write_metis_cache(G, PG, recursive, ans)
+            self.write_metis_cache(G, nparts, recursive, ans)
+
+        # print(len(set(ans)))
 
         return ans
     

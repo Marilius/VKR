@@ -26,11 +26,7 @@ class MK(BasePartitioner):
 
         output_file = self.output_folder.format(g_name.replace('.', str(self.CUT_RATIO) + '.'))
 
-        # print(output_file, G_grouped)
-        # print(sorted(list(G_grouped.nodes)))
-
         with open(output_file, 'w+') as file:
-            # if os.path.getsize(self.output_folder.format(g_name)) == 0:
             file.write('name weight children\n')
 
             for node_id in sorted(list(G_grouped.nodes)):
@@ -41,45 +37,11 @@ class MK(BasePartitioner):
                         line.append(str(neighbor)) 
 
                 line.append('\n')
-                # print(f"'{line}'")
                 file.write(' '.join(line))
 
         output_file = self.output_folder.format(g_name.replace('.txt', str(self.CUT_RATIO) + '.' + 'mapping'))
         with open(output_file, 'w+') as file:
             file.write(' '.join(map(str, mk_partition)))
-        # print(self.CUT_RATIO, len(set(mk_partition)), [mk_partition.count(i) for i in sorted(list(set(mk_partition)))])
-        # sleep(7)
-
-    def do_metis(self, G: nx.Graph, nparts: int, ufactor: int, recursive: bool | None = None) -> list[int]:
-        if recursive is None:
-            if (nparts > 8):
-                recursive = True
-            else:
-                recursive = False
-
-        if nparts == 1:  # Floating point exception from metis ¯\_(ツ)_/¯
-            return [0] * len(G.nodes)
-
-        (edgecuts, partition2parse) = metis.part_graph(G, nparts, objtype='cut', ncuts=10, ufactor=ufactor, recursive=recursive)
-
-        partition = [0] * len(G.nodes)
-
-        for new_i, i in enumerate(list(G.nodes)):
-            partition[i] = partition2parse[new_i]
-
-        # print('++++>', partition)
-
-        for new_i, i in enumerate(sorted(list(set(partition)))):
-            for j in range(len(partition)):
-                if partition[j] == i:
-                    partition[j] = new_i
-
-        # print('++++>', partition)
-
-        assert edgecuts == calc_edgecut(G, partition)
-        assert len(partition) == len(G.nodes)
-
-        return partition
     
     def load_mk_nparts_cache(self, G: nx.Graph, nparts: int, cr: float, weighted: bool) -> list[int] | None:
         w = '_w_' if 'node_weight_attr' in G.graph else '_!'
@@ -122,40 +84,10 @@ class MK(BasePartitioner):
                 G_grouped.graph['graph_name'] = G.graph['graph_name'] + '_grouped_' + str(nparts) + '_' + str(self.CUT_RATIO) + '_' + str(weighted)
                 return (G_grouped, partition)
 
-        n_ans = 0
-        partition_ans = None
+        partition_ans = super().do_metis(G, nparts)
 
-        ufactor = 1
-        while ufactor < self.MAX_UFACTOR: 
-            (_, partition) = self.metis_part(G, nparts, ufactor, nparts>8)
-
-            if self.check_cut_ratio(G, partition):
-                if len(set(partition)) == nparts:
-                    n_ans = nparts
-                    partition_ans = partition
-                    break
-
-                if len(set(partition)) > n_ans:
-                    n_ans = len(set(partition))
-                    partition_ans = partition
-
-            # ufactor += min(100, ufactor)
-            ufactor += ufactor        
-        
         if partition_ans is None:
             return (None, None)
-        
-        # ans = partition.copy()
-        for _ in range(5):
-            ufactor *= 0.75
-            ufactor = int(ufactor)
-            if ufactor < 1:
-                break
-
-            (_, partition) = self.metis_part(G, nparts, ufactor, nparts>8)
-            if self.check_cut_ratio(G, partition):
-                # if self.f(G, PG, partition) < self.f(G, PG, ans):
-                partition_ans = partition
 
         G_grouped = self.group_mk(G, partition_ans, weighted=weighted)
 
@@ -179,33 +111,34 @@ class MK(BasePartitioner):
         n = 0
         ufactor = 0
 
-        while num_right - num_left > 1:
-            # print('--------')
-            # print(num_left, num_right)
+        while num_right - num_left > 0:
             n = (num_left + num_right) // 2
-            print(n)
+            print('n_ans, n, left, right= ', n_ans, n, num_left, num_right, self.MAX_UFACTOR, calc_cut_ratio(G, partition_ans))
 
             ufactor = 1
             while True: 
-                partition = self.do_metis(G, n, ufactor)
-                # print(partition)
-                # print(calc_cut_ratio(G, partition))
-
-                # print(self.check_cut_ratio(G, partition))
-
+                (_, partition) = self.metis_part(G, n, ufactor)
+                print(n, len(set(partition)), ufactor, calc_cut_ratio(G, partition))
                 if self.check_cut_ratio(G, partition):
                     print('was here')
-                    if len(set(partition)) == n:
-                        num_left = n + 1
-                        n_ans = n
-                        partition_ans = partition
+                    partition_curr = partition.copy()
+                
+                    for _ in range(5):
+                        ufactor *= 0.75
+                        ufactor = int(ufactor)
+                        if ufactor < 1:
+                            break
+
+                        (_, partition) = self.metis_part(G, n, ufactor)
+                        if len(set(partition_curr)) < len(set(partition)):
+                            partition_curr = partition.copy()
+                            
+                    if len(set(partition_curr)) > n_ans:
+                        num_left = len(set(partition_curr)) + 1
+                        n_ans = len(set(partition_curr))
+                        partition_ans = partition_curr
                     else:
                         num_right = n
-
-                    if len(set(partition)) > n_ans:
-                        num_left = len(set(partition)) + 1
-                        n_ans = len(set(partition))
-                        partition_ans = partition
 
                     break
 
@@ -216,34 +149,27 @@ class MK(BasePartitioner):
 
                 # TODO как менять ufactor?
                 ufactor += ufactor
-            # print('--------')
 
         print('main ended')
 
-        partition = self.do_metis(G, num_right, ufactor)
-        # print(partition)
-        # print(calc_cut_ratio(G, partition))
-
+        (_, partition) = self.metis_part(G, num_right, ufactor)
         if self.check_cut_ratio(G, partition):
             if len(set(partition)) > n_ans:
-                n_ans = num_right
+                n_ans = len(set(partition))
                 partition_ans = partition
 
-        partition = self.do_metis(G, num_left, ufactor)
-        # print(partition)
-        # print(calc_cut_ratio(G, partition))
-
+        (_, partition) = self.metis_part(G, num_left, ufactor)
         if self.check_cut_ratio(G, partition):
             if len(set(partition)) > n_ans:
-                n_ans = num_left
+                n_ans = len(set(partition))
                 partition_ans = partition
 
         assert partition_ans, partition_ans
 
+        print('n_ans, n, left, right= ', n_ans, n, num_left, num_right, self.MAX_UFACTOR, calc_cut_ratio(G, partition_ans))
+
         if set(range(n_ans)) != set(partition_ans):
             mapping = dict()
-
-            # print(partition_ans)
 
             for new_id, old_id in enumerate(set(partition_ans)):
                 mapping[old_id] = new_id
@@ -251,10 +177,7 @@ class MK(BasePartitioner):
             for i in range(len(partition_ans)):
                 partition_ans[i] = mapping[partition_ans[i]]
 
-            # print(partition_ans)
-
-            # raise Exception
-
+        print('n_ans, n, left, right= ', n_ans, n, num_left, num_right, self.MAX_UFACTOR, calc_cut_ratio(G, partition_ans))
         return (n_ans, partition_ans)
 
     def get_num_mk(self, G: nx.Graph, cr: float | None = None) -> int:
@@ -285,15 +208,11 @@ class MK(BasePartitioner):
         if weighted:
             grouped_G.graph['node_weight_attr'] = 'weight'
 
-        # grouped_G.graph['graph_name'] = G.graph['graph_name'] + '_grouped'
+        grouped_G.graph['graph_name'] = G.graph['graph_name'] + '_grouped'
 
         return grouped_G
 
     def research(self) -> None:
-        # cr_list_little = [0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.2]
-        # cr_list_big = [0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1]
-        # cr_list = cr_list_little + cr_list_big
-
         cr_list = [i/100 for i in range(5, 100)] + [1]
         cr_list = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
 
