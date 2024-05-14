@@ -62,6 +62,8 @@ def input_networkx_unweighted_graph_from_file(path: str) -> nx.Graph:
 
 def calc_edgecut(G: nx.Graph, partition: list[int]) -> int:
     edgecut = 0
+    # print(partition)
+    # print(G.nodes(data=True))
     for edge in G.edges:
         node1, node2 = edge
         if partition[node1] != partition[node2]:

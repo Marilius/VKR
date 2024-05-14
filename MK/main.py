@@ -108,7 +108,7 @@ class MK(BasePartitioner):
             else:
                 file.write('None')
 
-    def mk_nparts(self, G: nx.Graph, nparts: int, cr: float | None = None, max_ufactor: float | None = 1e4, weighted: bool = True, check_cache: bool = True) -> tuple[nx.Graph, list[int]] | tuple[None, None]:
+    def mk_nparts(self, G: nx.Graph, nparts: int, cr: float | None = None, max_ufactor: float | None = 1e7, weighted: bool = True, check_cache: bool = True) -> tuple[nx.Graph, list[int]] | tuple[None, None]:
         if cr is not None:
             self.CUT_RATIO = cr
 
@@ -127,7 +127,7 @@ class MK(BasePartitioner):
 
         ufactor = 1
         while ufactor < self.MAX_UFACTOR: 
-            partition = self.do_metis(G, nparts, ufactor)
+            (_, partition) = self.metis_part(G, nparts, ufactor, nparts>8)
 
             if self.check_cut_ratio(G, partition):
                 if len(set(partition)) == nparts:
@@ -140,11 +140,23 @@ class MK(BasePartitioner):
                     partition_ans = partition
 
             # ufactor += min(100, ufactor)
-            ufactor += ufactor
+            ufactor += ufactor        
         
         if partition_ans is None:
             return (None, None)
         
+        # ans = partition.copy()
+        for _ in range(5):
+            ufactor *= 0.75
+            ufactor = int(ufactor)
+            if ufactor < 1:
+                break
+
+            (_, partition) = self.metis_part(G, nparts, ufactor, nparts>8)
+            if self.check_cut_ratio(G, partition):
+                # if self.f(G, PG, partition) < self.f(G, PG, ans):
+                partition_ans = partition
+
         G_grouped = self.group_mk(G, partition_ans, weighted=weighted)
 
         print('--->', G_grouped.nodes)
@@ -191,7 +203,7 @@ class MK(BasePartitioner):
                         num_right = n
 
                     if len(set(partition)) > n_ans:
-                        num_left = len(set(partition)) - 1
+                        num_left = len(set(partition)) + 1
                         n_ans = len(set(partition))
                         partition_ans = partition
 

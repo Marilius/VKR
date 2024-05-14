@@ -19,7 +19,12 @@ class BasePartitioner:
 
     @staticmethod
     def metis_part(G: nx.Graph, nparts: int, ufactor: int, recursive: bool) -> tuple[int, list[int]]:
+        # print('here')
+        if nparts == 1:
+            return (0, [0] * len(G.nodes))
+
         (edgecuts, partition2parse) = metis.part_graph(G, nparts, objtype='cut', ncuts=10, ufactor=ufactor, recursive=recursive)
+        # print('not here')
 
         partition = [0] * len(G.nodes)
 
@@ -30,6 +35,11 @@ class BasePartitioner:
 
         for new_i, i in enumerate(list(G.nodes)):
             partition[i] = partition2parse[new_i]
+
+        for new_i, i in enumerate(sorted(list(set(partition)))):
+            for j in range(len(partition)):
+                if partition[j] == i:
+                    partition[j] = new_i
 
         assert edgecuts == calc_edgecut(G, partition)
 
@@ -104,6 +114,9 @@ class BasePartitioner:
         if G is None or PG is None:
             return None
 
+        # if isinstance(PG, int):
+            # PG = self.get_homo_pg(PG)
+
         if recursive is None:
             if (len(PG) > 8):
                 recursive = True
@@ -114,6 +127,9 @@ class BasePartitioner:
             partition = self.load_metis_cache(G, PG, recursive)
             if partition and len(partition) == len(G) and self.check_cut_ratio(G, partition):
                 return partition
+
+        if len(PG) == 1:
+            return [0] * len(G)
 
         ufactor = 1
 
@@ -136,10 +152,22 @@ class BasePartitioner:
 
             (_, partition) = self.metis_part(G, len(PG), ufactor, recursive)
             if self.check_cut_ratio(G, partition):
-                if self.f(G, PG, partition) < self.f(G, PG, ans):
-                    ans = partition
+                # if self.f(G, PG, partition) < self.f(G, PG, ans):
+                ans = partition
 
         if check_cache:
             self.write_metis_cache(G, PG, recursive, ans)
 
         return ans
+    
+    @staticmethod
+    def get_homo_pg(nproc: int) -> nx.Graph:
+        physical_graph = nx.complete_graph(nproc)
+
+        for i in range(nproc):
+            physical_graph.nodes[i]['weight'] = 1
+
+        physical_graph.graph['graph_name'] = 'homo_' + str(nproc) + '.txt'
+        physical_graph.graph['node_weight_attr'] = 'weight'
+
+        return physical_graph

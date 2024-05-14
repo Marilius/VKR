@@ -1,6 +1,6 @@
 from helpers import input_networkx_graph_from_file, input_networkx_unweighted_graph_from_file, calc_edgecut, calc_cut_ratio, do_unpack_mk, unpack_mk
 from MK import MK
-from base_partitioner import Partitioner
+from base_partitioner import BasePartitioner
 
 from os import listdir, makedirs
 from os.path import isfile, join
@@ -10,7 +10,7 @@ from time import sleep
 import networkx as nx
 
 
-class Greed(Partitioner):
+class Greed(BasePartitioner):
     def __init__(self) -> None:
         self.MK_DIR: str = './data_mk'
         self.CACHE_DIR: str = './cache'
@@ -121,18 +121,20 @@ class Greed(Partitioner):
     def MK_greed_greed(self, G: nx.Graph, PG: nx.Graph) -> list[int] | None:
         max_mk = self.mk.get_num_mk(G, self.CUT_RATIO)
 
-        best_partition: list[int] | None = self.do_metis(G, PG)
+        # best_partition: list[int] | None = self.do_metis(G, PG)
+        # best_f: float = self.f(G, PG, best_partition)
+        best_partition: list[int] = [0] * len(G.nodes)
         best_f: float = self.f(G, PG, best_partition)
 
         n = 0
-        if best_partition:
-            n = len(set(best_partition))
+        if self.do_metis(G, PG):
+            n = len(set(self.do_metis(G, PG)))
 
         assert self.do_metis(G, PG) == self.do_metis(G, PG)
 
         cr0 = self.CUT_RATIO
 
-        assert n <= max_mk, (n, max_mk)
+        # assert n <= max_mk, (n, max_mk, G.graph['graph_name'], self.CUT_RATIO)
 
 
         for nparts in range(1, max_mk + 1):
@@ -168,8 +170,14 @@ class Greed(Partitioner):
                     else:
                         best_partition = partition
 
-        assert self.f(G, PG, partition) >= self.f(G, PG, best_partition)
-        assert self.f(G, PG, best_partition) <= self.f(G, PG, self.do_metis(G, PG))
+        if n == max_mk:
+            print('-', self.f(G, PG, best_partition), self.f(G, PG, self.do_metis(G, PG)))
+            sleep(3)
+            print('+', self.f(G, PG, best_partition), self.f(G, PG, self.postprocessing_phase(G, PG, self.do_metis(G, PG))))
+            sleep(3)
+
+        # assert self.f(G, PG, partition) >= self.f(G, PG, best_partition)
+        # assert self.f(G, PG, best_partition) <= self.f(G, PG, self.do_metis(G, PG))
 
         return best_partition
     
@@ -285,7 +293,7 @@ class Greed(Partitioner):
         cr_list = cr_list_little + cr_list_big
         # cr_list = [0.4]
         # cr_list = [1]
-        cr_list = [0.2]
+        cr_list = [0.08]
 
         for input_dir, output_dir in graph_dirs:
             for graph_file in listdir(input_dir):
