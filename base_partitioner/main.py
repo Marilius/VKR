@@ -15,18 +15,46 @@ class BasePartitioner:
     ) -> None:
         self.MK_DIR: str = './data_mk'
         self.CACHE_DIR: str = './cache'
-        self.ALL_CR_LIST: list[float] = [i/100 for i in range(7, 100)] + [1]
+        self.ALL_CR_LIST: list[float] = [i/100 for i in range(5, 100)] + [1]
         self.BIG_NUMBER: float = 1e10
         self.PENALTY: bool = True
         self.CUT_RATIO: float | None = cut_ratio
 
-    @staticmethod
-    def metis_part(G: nx.Graph, nparts: int, ufactor: int, recursive: bool | None = None) -> tuple[int, list[int]]:
+    def load_metis_part_cache(self, G: nx.Graph, nparts: int, ufactor: int, recursive: bool) -> list[int] | None:
+        node_attr = 'weight' if 'node_weight_attr' in G.graph else None
+        G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
+        path = f'{self.CACHE_DIR}/metis_part/{G_hash}_{nparts}_{ufactor}_{self.CUT_RATIO}_{recursive}.txt'
+
+        if isfile(path):
+            with open(path, 'r') as f:
+                line = f.readline()
+                partition = list(map(int, line.split()))
+                return partition
+        
+        return None
+
+    def write_metis_part_cache(self, G: nx.Graph, nparts: int, ufactor: int, recursive: bool, partition: list[int]) -> None:
+        node_attr = 'weight' if 'node_weight_attr' in G.graph else None
+        G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
+        path = f'{self.CACHE_DIR}/metis_part/{G_hash}_{nparts}_{ufactor}_{self.CUT_RATIO}_{recursive}.txt'
+
+        makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
+
+        with open(path, 'w') as file:
+            file.write(' '.join(map(str, partition)))
+
+    # @staticmethod
+    def metis_part(self, G: nx.Graph, nparts: int, ufactor: int, recursive: bool | None = None, check_cache: bool = True) -> tuple[int, list[int]]:
         if recursive is None:
             recursive = nparts > 8
 
         if nparts == 1:
             return (0, [0] * len(G.nodes))
+
+        if check_cache:
+            partition = self.load_metis_part_cache(G, nparts, ufactor, recursive)
+            if partition:
+                return (calc_edgecut(G, partition), partition)
 
         (edgecuts, partition2parse) = metis.part_graph(G, nparts, objtype='cut', ncuts=10, ufactor=ufactor, recursive=recursive)
 
@@ -39,6 +67,9 @@ class BasePartitioner:
             for j in range(len(partition)):
                 if partition[j] == i:
                     partition[j] = new_i
+
+        if check_cache:
+            self.write_metis_part_cache(G, nparts, ufactor, recursive, partition)
 
         return (edgecuts, partition)
 
@@ -67,9 +98,14 @@ class BasePartitioner:
 
         return max(p_loads) + penalty
     
-    def load_metis_cache(self, G: nx.Graph, nparts: int, recursive: bool) -> list[int] | None:
-        weighted = '_weighted_' if 'node_weight_attr' in G.graph else '_!'
-        path = self.CACHE_DIR + '/' + G.graph['graph_name'] + weighted + str(nparts) + '!_' + str(self.CUT_RATIO) + '_' + str(recursive) + '.txt'
+    def load_do_metis_cache(self, G: nx.Graph, nparts: int, recursive: bool, step_back: int) -> list[int] | None:
+        node_attr = 'weight' if 'node_weight_attr' in G.graph else None
+        G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
+        path = f'{self.CACHE_DIR}/base_do_metis/{G_hash}_{nparts}_{self.CUT_RATIO}_{recursive}_{step_back}.txt'
+        # node_attr = 'weight' if 'node_weight_attr' in G.graph else None
+        # G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
+        # weighted = '_weighted_' if 'node_weight_attr' in G.graph else '_!'
+        # path = self.CACHE_DIR + '/' + G.graph['graph_name'] + weighted + str(nparts) + '!_' + str(self.CUT_RATIO) + '_' + str(recursive) + f'_{step_back}_' + '.txt'
 
         if isfile(path):
             with open(path, 'r') as f:
@@ -83,9 +119,13 @@ class BasePartitioner:
         
         return None
 
-    def write_metis_cache(self, G: nx.Graph, nparts: int, recursive: bool, partition: list[int] | None) -> None:
-        weighted = '_w_' if 'node_weight_attr' in G.graph else '_!'
-        path = self.CACHE_DIR + '/' + G.graph['graph_name'] + weighted + str(nparts) + '!_' + str(self.CUT_RATIO) + '_' + str(recursive) + '.txt'
+    def write_do_metis_cache(self, G: nx.Graph, nparts: int, recursive: bool, partition: list[int] | None, step_back: int) -> None:
+        node_attr = 'weight' if 'node_weight_attr' in G.graph else None
+        G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
+        path = f'{self.CACHE_DIR}/base_do_metis/{G_hash}_{nparts}_{self.CUT_RATIO}_{recursive}_{step_back}.txt'
+
+        # weighted = '_w_' if 'node_weight_attr' in G.graph else '_!'
+        # path = self.CACHE_DIR + '/' + G.graph['graph_name'] + weighted + str(nparts) + '!_' + str(self.CUT_RATIO) + '_' + str(recursive) + f'_{step_back}_' + '.txt'
 
         makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
 
@@ -95,7 +135,7 @@ class BasePartitioner:
             else:
                 file.write('None')
 
-    def do_metis(self, G: nx.Graph | None, nparts: int | None, recursive: bool | None = None, check_cache: bool = True) -> list[int] | None:
+    def do_metis(self, G: nx.Graph | None, nparts: int | None, recursive: bool | None = None, check_cache: bool = True, step_back: int = 5) -> list[int] | None:
         if G is None or nparts is None:
             return None
 
@@ -106,10 +146,9 @@ class BasePartitioner:
             return [0] * len(G)
 
         if check_cache:
-            partition = self.load_metis_cache(G, nparts, recursive)
+            partition = self.load_do_metis_cache(G, nparts, recursive, step_back=step_back)
             if partition and len(partition) == len(G) and self.check_cut_ratio(G, partition):
                 return partition
-
 
         ufactor = 1
 
@@ -126,7 +165,7 @@ class BasePartitioner:
         # print(len(set(partition)))
 
         ans = partition.copy()
-        for _ in range(5):
+        for _ in range(step_back):
             ufactor *= 0.75
             ufactor = int(ufactor)
             if ufactor < 1:
@@ -137,7 +176,7 @@ class BasePartitioner:
                 ans = partition
 
         if check_cache:
-            self.write_metis_cache(G, nparts, recursive, ans)
+            self.write_do_metis_cache(G, nparts, recursive, ans, step_back)
 
         # print(len(set(ans)))
 

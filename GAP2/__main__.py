@@ -4,10 +4,10 @@ from .main import GAP2
 print('lol')
 
 graph_dirs = [
-    (r'./data/testing_graphs', './results/GAP2/testing_graphs'),
-    (r'./data/triangle/graphs', './results/GAP2/triangle'),
     (r'./data/sausages', './results/GAP2/sausages'),
+    (r'./data/triangle/graphs', './results/GAP2/triangle'),
     (r'./data/rand', './results/GAP2/rand'),
+    (r'./data/testing_graphs', './results/GAP2/testing_graphs'),
 ]
 
 gap_algo = GAP2(article=True, graph_dirs=graph_dirs, iter_max=100)

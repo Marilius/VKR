@@ -43,9 +43,9 @@ class MK(BasePartitioner):
         with open(output_file, 'w+') as file:
             file.write(' '.join(map(str, mk_partition)))
     
-    def load_mk_nparts_cache(self, G: nx.Graph, nparts: int, cr: float, weighted: bool) -> list[int] | None:
+    def load_mk_nparts_cache(self, G: nx.Graph, nparts: int, cr: float, weighted: bool, steps_back: int) -> list[int] | None:
         w = '_w_' if 'node_weight_attr' in G.graph else '_!'
-        path = self.CACHE_DIR + '/' + G.graph['graph_name'] + '_!' + str(nparts) + '!_' + w + str(nparts) + '!_' + str(cr) + '_' + str(weighted) + '.txt'
+        path = self.CACHE_DIR + '/' + G.graph['graph_name'] + '_!' + str(nparts) + '!_' + w + str(steps_back) + '!_' + str(cr) + '_' + str(weighted) + '.txt'
 
         if isfile(path):
             with open(path, 'r') as f:
@@ -59,9 +59,9 @@ class MK(BasePartitioner):
         
         return None
 
-    def write_mk_nparts_cache(self, G: nx.Graph, nparts: int, cr: float, weighted: bool, partition: list[int] | None) -> None:        
+    def write_mk_nparts_cache(self, G: nx.Graph, nparts: int, cr: float, weighted: bool, partition: list[int] | None, steps_back: int) -> None:        
         w = '_w_' if 'node_weight_attr' in G.graph else '_!'
-        path = self.CACHE_DIR + '/' + G.graph['graph_name'] + '_!' + str(nparts) + '!_' + w + str(nparts) + '!_' + str(cr) + '_' + str(weighted) + '.txt'
+        path = self.CACHE_DIR + '/' + G.graph['graph_name'] + '_!' + str(nparts) + '!_' + w + str(steps_back) + '!_' + str(cr) + '_' + str(weighted) + '.txt'
         makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
 
         with open(path, 'w') as file:
@@ -70,21 +70,21 @@ class MK(BasePartitioner):
             else:
                 file.write('None')
 
-    def mk_nparts(self, G: nx.Graph, nparts: int, cr: float | None = None, max_ufactor: float | None = 1e7, weighted: bool = True, check_cache: bool = True) -> tuple[nx.Graph, list[int]] | tuple[None, None]:
+    def mk_nparts(self, G: nx.Graph, nparts: int, cr: float | None = None, max_ufactor: float | None = 1e7, weighted: bool = True, check_cache: bool = True, steps_back: int = 5) -> tuple[nx.Graph, list[int]] | tuple[None, None]:
         if cr is not None:
             self.CUT_RATIO = cr
 
         if max_ufactor is not None:
             self.MAX_UFACTOR = max_ufactor
 
-        if check_cache:
-            partition = self.load_mk_nparts_cache(G, nparts, self.CUT_RATIO, weighted)
-            if partition is not None:
-                G_grouped = self.group_mk(G, partition, weighted=weighted)
-                G_grouped.graph['graph_name'] = G.graph['graph_name'] + '_grouped_' + str(nparts) + '_' + str(self.CUT_RATIO) + '_' + str(weighted)
-                return (G_grouped, partition)
+        # if check_cache:
+        #     partition = self.load_mk_nparts_cache(G, nparts, self.CUT_RATIO, weighted, steps_back=steps_back)
+        #     if partition is not None:
+        #         G_grouped = self.group_mk(G, partition, weighted=weighted)
+        #         G_grouped.graph['graph_name'] = G.graph['graph_name'] + '_grouped_' + str(nparts) + '_' + str(self.CUT_RATIO) + '_' + str(weighted)
+        #         return (G_grouped, partition)
 
-        partition_ans = super().do_metis(G, nparts)
+        partition_ans = super().do_metis(G, nparts, step_back=steps_back)
 
         if partition_ans is None:
             return (None, None)
@@ -94,14 +94,46 @@ class MK(BasePartitioner):
         print('--->', G_grouped.nodes)
         print('--->', partition_ans)
 
-        if check_cache:
-            self.write_mk_nparts_cache(G, nparts, self.CUT_RATIO, weighted, partition_ans)
+        # if check_cache:
+        #     self.write_mk_nparts_cache(G, nparts, self.CUT_RATIO, weighted, partition_ans, steps_back=steps_back)
 
         G_grouped.graph['graph_name'] = G.graph['graph_name'] + '_grouped_' + str(nparts) + '_' + str(self.CUT_RATIO) + '_' + str(weighted)
 
         return (G_grouped, partition_ans)
+    
+    def load_mk_part_cache(self, G: nx.Graph, steps_back: int) -> list[int] | None:
+        node_attr = 'weight' if 'node_weight_attr' in G.graph else None
+        G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
+        path = f'{self.CACHE_DIR}/mk_part/{G_hash}_{self.CUT_RATIO}_{steps_back}.txt'
+        # w = '_w_' if 'node_weight_attr' in G.graph else ''
+        # path = self.CACHE_DIR + '/' + 'mk_part' + '/' + G.graph['graph_name'] + w + f'_{steps_back}' +'.txt'
 
-    def mk_part(self, G: nx.Graph) -> tuple[int, list[int]]:
+        if isfile(path):
+            with open(path, 'r') as f:
+                line = f.readline()
+                partition = list(map(int, line.split()))
+                return partition
+        
+        return None
+
+    def write_mk_part_cache(self, G: nx.Graph, partition: list[int], steps_back: int) -> None:
+        node_attr = 'weight' if 'node_weight_attr' in G.graph else None
+        G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
+        path = f'{self.CACHE_DIR}/mk_part/{G_hash}_{self.CUT_RATIO}_{steps_back}.txt'
+        # w = '_w_' if 'node_weight_attr' in G.graph else ''
+        # path = self.CACHE_DIR + '/' + 'mk_part' + '/' + G.graph['graph_name'] + w + f'_{steps_back}' +'.txt'
+
+        makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
+
+        with open(path, 'w') as file:
+            file.write(' '.join(map(str, partition)))
+
+    def mk_part(self, G: nx.Graph, check_cache: bool = True, steps_back: int = 5) -> tuple[int, list[int]]:
+        if check_cache:
+            partition = self.load_mk_part_cache(G, steps_back=steps_back)
+            if partition is not None:
+                return (len(set(partition)), partition)
+
         num_left = 2
         num_right = len(G)
 
@@ -123,7 +155,7 @@ class MK(BasePartitioner):
                     print('was here')
                     partition_curr = partition.copy()
                 
-                    for _ in range(5):
+                    for _ in range(steps_back):
                         ufactor *= 0.75
                         ufactor = int(ufactor)
                         if ufactor < 1:
@@ -152,17 +184,25 @@ class MK(BasePartitioner):
 
         print('main ended')
 
-        (_, partition) = self.metis_part(G, num_right, ufactor)
-        if self.check_cut_ratio(G, partition):
-            if len(set(partition)) > n_ans:
-                n_ans = len(set(partition))
-                partition_ans = partition
+        ufactor = 1
+        while ufactor < self.MAX_UFACTOR:
+            (_, partition) = self.metis_part(G, num_right, ufactor)
+            if self.check_cut_ratio(G, partition):
+                if len(set(partition)) > n_ans:
+                    n_ans = len(set(partition))
+                    partition_ans = partition
+                break
+            ufactor *= 2
 
-        (_, partition) = self.metis_part(G, num_left, ufactor)
-        if self.check_cut_ratio(G, partition):
-            if len(set(partition)) > n_ans:
-                n_ans = len(set(partition))
-                partition_ans = partition
+        ufactor = 1
+        while ufactor < self.MAX_UFACTOR:
+            (_, partition) = self.metis_part(G, num_left, ufactor)
+            if self.check_cut_ratio(G, partition):
+                if len(set(partition)) > n_ans:
+                    n_ans = len(set(partition))
+                    partition_ans = partition
+                break
+            ufactor *= 2
 
         assert partition_ans, partition_ans
 
@@ -178,13 +218,17 @@ class MK(BasePartitioner):
                 partition_ans[i] = mapping[partition_ans[i]]
 
         print('n_ans, n, left, right= ', n_ans, n, num_left, num_right, self.MAX_UFACTOR, calc_cut_ratio(G, partition_ans))
+
+        if check_cache:
+            self.write_mk_part_cache(G, partition_ans, steps_back=steps_back)
+
         return (n_ans, partition_ans)
 
-    def get_num_mk(self, G: nx.Graph, cr: float | None = None) -> int:
+    def get_num_mk(self, G: nx.Graph, cr: float | None = None, steps_back: int = 5, check_cache: bool = True) -> int:
         if cr is not None:
             self.CUT_RATIO = cr
 
-        (n, _) = self.mk_part(G)
+        (n, _) = self.mk_part(G, steps_back=steps_back, check_cache=check_cache)
 
         return n
 
@@ -214,7 +258,7 @@ class MK(BasePartitioner):
 
     def research(self) -> None:
         cr_list = [i/100 for i in range(5, 100)] + [1]
-        cr_list = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
+        # cr_list = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
 
         for input_dir in self.data_dirs:
             for graph_file in os.listdir(input_dir):

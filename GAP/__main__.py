@@ -3,8 +3,8 @@ from .main import GAP
 graph_dirs = [
     (r'./data/sausages', './results/GAP/sausages'),
     (r'./data/triangle/graphs', './results/GAP/triangle'),
-    (r'./data/testing_graphs', './results/GAP/testing_graphs'),
     (r'./data/rand', './results/GAP/rand'),
+    (r'./data/testing_graphs', './results/GAP/testing_graphs'),
 ]
 gap_alg = GAP(article=True, graph_dirs=graph_dirs)
 # необходимо чтобы граф был связный
