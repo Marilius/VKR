@@ -134,7 +134,7 @@ class MK(BasePartitioner):
             if partition is not None:
                 return (len(set(partition)), partition)
 
-        num_left = 2
+        num_left = 1
         num_right = len(G)
 
         n_ans = 0

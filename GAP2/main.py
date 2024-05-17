@@ -223,6 +223,9 @@ class GAP2(GAP):
                 f_ans = f_curr
             cut_edges = self.get_cut_edges(ans)
 
+            if not cut_edges:
+                break
+
             individuals = self.ga_initialization(cut_edges)
 
             # f_vals = [self.f(partition, individuals, black_list=black_list)
