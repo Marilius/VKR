@@ -98,14 +98,10 @@ class BasePartitioner:
 
         return max(p_loads) + penalty
     
-    def load_do_metis_cache(self, G: nx.Graph, nparts: int, recursive: bool, step_back: int) -> list[int] | None:
+    def load_do_metis_cache(self, G: nx.Graph, nparts: int, recursive: bool, steps_back: int) -> list[int] | None:
         node_attr = 'weight' if 'node_weight_attr' in G.graph else None
         G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
-        path = f'{self.CACHE_DIR}/base_do_metis/{G_hash}_{nparts}_{self.CUT_RATIO}_{recursive}_{step_back}.txt'
-        # node_attr = 'weight' if 'node_weight_attr' in G.graph else None
-        # G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
-        # weighted = '_weighted_' if 'node_weight_attr' in G.graph else '_!'
-        # path = self.CACHE_DIR + '/' + G.graph['graph_name'] + weighted + str(nparts) + '!_' + str(self.CUT_RATIO) + '_' + str(recursive) + f'_{step_back}_' + '.txt'
+        path = f'{self.CACHE_DIR}/base_do_metis/{G_hash}_{nparts}_{self.CUT_RATIO}_{recursive}_{steps_back}.txt'
 
         if isfile(path):
             with open(path, 'r') as f:
@@ -119,13 +115,13 @@ class BasePartitioner:
         
         return None
 
-    def write_do_metis_cache(self, G: nx.Graph, nparts: int, recursive: bool, partition: list[int] | None, step_back: int) -> None:
+    def write_do_metis_cache(self, G: nx.Graph, nparts: int, recursive: bool, partition: list[int] | None, steps_back: int) -> None:
         node_attr = 'weight' if 'node_weight_attr' in G.graph else None
         G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
-        path = f'{self.CACHE_DIR}/base_do_metis/{G_hash}_{nparts}_{self.CUT_RATIO}_{recursive}_{step_back}.txt'
+        path = f'{self.CACHE_DIR}/base_do_metis/{G_hash}_{nparts}_{self.CUT_RATIO}_{recursive}_{steps_back}.txt'
 
         # weighted = '_w_' if 'node_weight_attr' in G.graph else '_!'
-        # path = self.CACHE_DIR + '/' + G.graph['graph_name'] + weighted + str(nparts) + '!_' + str(self.CUT_RATIO) + '_' + str(recursive) + f'_{step_back}_' + '.txt'
+        # path = self.CACHE_DIR + '/' + G.graph['graph_name'] + weighted + str(nparts) + '!_' + str(self.CUT_RATIO) + '_' + str(recursive) + f'_{steps_back}_' + '.txt'
 
         makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
 
@@ -135,7 +131,7 @@ class BasePartitioner:
             else:
                 file.write('None')
 
-    def do_metis(self, G: nx.Graph | None, nparts: int | None, recursive: bool | None = None, check_cache: bool = True, step_back: int = 5) -> list[int] | None:
+    def do_metis(self, G: nx.Graph | None, nparts: int | None, recursive: bool | None = None, check_cache: bool = True, steps_back: int = 5) -> list[int] | None:
         if G is None or nparts is None:
             return None
 
@@ -146,7 +142,7 @@ class BasePartitioner:
             return [0] * len(G)
 
         if check_cache:
-            partition = self.load_do_metis_cache(G, nparts, recursive, step_back=step_back)
+            partition = self.load_do_metis_cache(G, nparts, recursive, steps_back=steps_back)
             if partition and len(partition) == len(G) and self.check_cut_ratio(G, partition):
                 return partition
 
@@ -165,7 +161,7 @@ class BasePartitioner:
         # print(len(set(partition)))
 
         ans = partition.copy()
-        for _ in range(step_back):
+        for _ in range(steps_back):
             ufactor *= 0.75
             ufactor = int(ufactor)
             if ufactor < 1:
@@ -176,20 +172,73 @@ class BasePartitioner:
                 ans = partition
 
         if check_cache:
-            self.write_do_metis_cache(G, nparts, recursive, ans, step_back)
+            self.write_do_metis_cache(G, nparts, recursive, ans, steps_back)
 
         # print(len(set(ans)))
 
         return ans
-    
-    @staticmethod
-    def get_homo_pg(nproc: int) -> nx.Graph:
-        physical_graph = nx.complete_graph(nproc)
 
-        for i in range(nproc):
-            physical_graph.nodes[i]['weight'] = 1
+    def load_do_metis_with_pg_cache(self, G: nx.Graph, PG: nx.Graph, steps_back: int = 5) -> list[int] | None:
+        node_attr = 'weight' if 'node_weight_attr' in G.graph else None
+        G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
+        PG_hash = nx.weisfeiler_lehman_graph_hash(PG, node_attr=node_attr)
+        path = f'{self.CACHE_DIR}/do_metis_with_pg/{G_hash}_{PG_hash}_{self.CUT_RATIO}_{steps_back}.txt'
 
-        physical_graph.graph['graph_name'] = 'homo_' + str(nproc) + '.txt'
-        physical_graph.graph['node_weight_attr'] = 'weight'
+        if isfile(path):
+            with open(path, 'r') as f:
+                line = f.readline()
+                if 'None' not in line:
+                    partition = list(map(int, line.split()))
 
-        return physical_graph
+                    print('CACHED! :)')
+
+                    return partition
+        
+        return None
+
+    def write_do_metis_with_pg_cache(self, G: nx.Graph, PG: nx.Graph, steps_back: int, partition: list[int] | None) -> None:
+        node_attr = 'weight' if 'node_weight_attr' in G.graph else None
+        G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
+        PG_hash = nx.weisfeiler_lehman_graph_hash(PG, node_attr=node_attr)
+        path = f'{self.CACHE_DIR}/do_metis_with_pg/{G_hash}_{PG_hash}_{self.CUT_RATIO}_{steps_back}.txt'
+
+        makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
+
+        with open(path, 'w') as file:
+            if partition:
+                file.write(' '.join(map(str, partition)))
+            else:
+                file.write('None')
+
+    def do_metis_with_pg(self, G: nx.Graph | None, PG: nx.Graph | None, check_cache: bool = True, steps_back: int = 5) -> list[int] | None:
+        if check_cache:
+            partition = self.load_do_metis_with_pg_cache(G, PG, steps_back=steps_back)
+            if partition and len(partition) == len(G) and self.check_cut_ratio(G, partition):
+                return partition
+
+        partition = self.do_metis(G, len(PG), check_cache=check_cache, steps_back=steps_back)
+
+        procs = [i for i in PG.nodes]
+        procs = list(sorted(procs, key=lambda proc: -PG.nodes[proc]['weight']))
+        f_1 = self.f(G, PG, partition)
+        if partition is not None:
+            times = [0] * len(PG)
+            for i, proc in enumerate(partition):
+                times[proc] += G.nodes[i]['weight']
+            procs_old = [i for i in PG.nodes]
+            procs_old = list(sorted(procs_old, key=lambda proc: -times[proc]))
+            
+            for i in range(len(partition)):
+                partition[i] = procs[procs_old.index(partition[i])]
+
+            times = [0] * len(PG)
+            for i, proc in enumerate(partition):
+                times[proc] += G.nodes[i]['weight']
+
+        f_2 = self.f(G, PG, partition)
+        assert f_2 <= f_1, (f_2, f_1)
+
+        if check_cache:
+            self.write_do_metis_with_pg_cache(G, PG, steps_back, partition)
+
+        return partition

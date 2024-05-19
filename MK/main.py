@@ -1,11 +1,10 @@
-from helpers import input_networkx_graph_from_file, input_networkx_unweighted_graph_from_file, calc_edgecut, calc_cut_ratio
+from helpers import input_networkx_graph_from_file, input_networkx_unweighted_graph_from_file, calc_cut_ratio
 from base_partitioner import BasePartitioner
 
 import networkx as nx
-import metis
 
-from os import listdir, makedirs
-from os.path import isfile, join
+from os import makedirs
+from os.path import isfile
 
 import os
 
@@ -84,7 +83,7 @@ class MK(BasePartitioner):
         #         G_grouped.graph['graph_name'] = G.graph['graph_name'] + '_grouped_' + str(nparts) + '_' + str(self.CUT_RATIO) + '_' + str(weighted)
         #         return (G_grouped, partition)
 
-        partition_ans = super().do_metis(G, nparts, step_back=steps_back)
+        partition_ans = super().do_metis(G, nparts, steps_back=steps_back)
 
         if partition_ans is None:
             return (None, None)

@@ -1,4 +1,4 @@
-from helpers import input_networkx_graph_from_file, calc_cut_ratio, do_unpack_mk
+from helpers import calc_cut_ratio
 
 from GAP import GAP
 
@@ -101,7 +101,7 @@ class GAP2(GAP):
 
         return super().f(partition, individual) + penalty
 
-    def gap(self, G: nx.Graph, PG: nx.Graph, if_do_load: bool = False, path: str | None = None, physical_graph_name: str | None = None, initial_partition: list[int] | None = None) -> list[int]:
+    def gap(self, G: nx.Graph, PG: nx.Graph, if_do_load: bool = False, path: str | None = None, physical_graph_name: str | None = None, initial_partition: list[int] | None = None) -> list[int] | None: 
         black_list = []
 
         num_of_tries = self.NUM_OF_TRIES
@@ -115,6 +115,9 @@ class GAP2(GAP):
             partition = self.get_initial_partition(G, PG, if_do_load=if_do_load, path=path, physical_graph_name=physical_graph_name)
         else:
             partition = initial_partition
+
+        if partition is None:
+            return None
 
         ans = partition.copy()
         f_ans = self.f(partition)
@@ -157,7 +160,8 @@ class GAP2(GAP):
                 f_best = min(f_vals)
                 individual_best = individuals[f_vals.index(f_best)].copy()
 
-                for _ in range(self.ITER_MAX):
+                generations_without_improve = 0
+                while generations_without_improve < self.ITER_MAX:
                     if self.k == 0:
                         return partition
 
@@ -193,6 +197,10 @@ class GAP2(GAP):
                     if f_min < f_best:
                         f_best = f_min
                         individual_best = individual_min.copy()
+                        generations_without_improve = 0
+                    else:
+                        generations_without_improve += 1
+                    
 
                 if f_best < f_curr:
                     # ??????????/
