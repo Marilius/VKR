@@ -103,7 +103,7 @@ class MK(BasePartitioner):
     def load_mk_part_cache(self, G: nx.Graph, steps_back: int) -> list[int] | None:
         node_attr = 'weight' if 'node_weight_attr' in G.graph else None
         G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
-        path = f'2{self.CACHE_DIR}/mk_part/{G_hash}_{self.CUT_RATIO}_{steps_back}.txt'
+        path = f'{self.CACHE_DIR}/mk_part/{G_hash}_{self.CUT_RATIO}_{steps_back}.txt'
 
         if isfile(path):
             with open(path, 'r') as f:
@@ -116,7 +116,7 @@ class MK(BasePartitioner):
     def write_mk_part_cache(self, G: nx.Graph, partition: list[int], steps_back: int) -> None:
         node_attr = 'weight' if 'node_weight_attr' in G.graph else None
         G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
-        path = f'2{self.CACHE_DIR}/mk_part/{G_hash}_{self.CUT_RATIO}_{steps_back}.txt'
+        path = f'{self.CACHE_DIR}/mk_part/{G_hash}_{self.CUT_RATIO}_{steps_back}.txt'
 
         makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
 
