@@ -1,4 +1,0 @@
-name weight children
-0 299 2 
-1 2736 2 
-2 2884 

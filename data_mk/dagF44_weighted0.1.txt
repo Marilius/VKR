@@ -1,6 +1,0 @@
-name weight children
-0 56 1 4 
-1 66 4 
-2 49 4 
-3 88 4 
-4 1959 

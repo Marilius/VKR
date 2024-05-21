@@ -1,5 +1,0 @@
-name weight children
-0 66 3 2 
-1 66 3 
-2 82 3 
-3 1980 
