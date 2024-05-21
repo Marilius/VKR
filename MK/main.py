@@ -103,9 +103,7 @@ class MK(BasePartitioner):
     def load_mk_part_cache(self, G: nx.Graph, steps_back: int) -> list[int] | None:
         node_attr = 'weight' if 'node_weight_attr' in G.graph else None
         G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
-        path = f'{self.CACHE_DIR}/mk_part/{G_hash}_{self.CUT_RATIO}_{steps_back}.txt'
-        # w = '_w_' if 'node_weight_attr' in G.graph else ''
-        # path = self.CACHE_DIR + '/' + 'mk_part' + '/' + G.graph['graph_name'] + w + f'_{steps_back}' +'.txt'
+        path = f'2{self.CACHE_DIR}/mk_part/{G_hash}_{self.CUT_RATIO}_{steps_back}.txt'
 
         if isfile(path):
             with open(path, 'r') as f:
@@ -118,9 +116,7 @@ class MK(BasePartitioner):
     def write_mk_part_cache(self, G: nx.Graph, partition: list[int], steps_back: int) -> None:
         node_attr = 'weight' if 'node_weight_attr' in G.graph else None
         G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
-        path = f'{self.CACHE_DIR}/mk_part/{G_hash}_{self.CUT_RATIO}_{steps_back}.txt'
-        # w = '_w_' if 'node_weight_attr' in G.graph else ''
-        # path = self.CACHE_DIR + '/' + 'mk_part' + '/' + G.graph['graph_name'] + w + f'_{steps_back}' +'.txt'
+        path = f'2{self.CACHE_DIR}/mk_part/{G_hash}_{self.CUT_RATIO}_{steps_back}.txt'
 
         makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
 
@@ -178,7 +174,6 @@ class MK(BasePartitioner):
                     num_right = n - 1
                     break
 
-                # TODO как менять ufactor?
                 ufactor += ufactor
 
         print('main ended')
@@ -193,17 +188,17 @@ class MK(BasePartitioner):
                 break
             ufactor *= 2
 
-        ufactor = 1
-        while ufactor < self.MAX_UFACTOR:
-            (_, partition) = self.metis_part(G, num_left, ufactor)
-            if self.check_cut_ratio(G, partition):
-                if len(set(partition)) > n_ans:
-                    n_ans = len(set(partition))
-                    partition_ans = partition
-                break
-            ufactor *= 2
+        # ufactor = 1
+        # while ufactor < self.MAX_UFACTOR:
+        #     (_, partition) = self.metis_part(G, num_left, ufactor)
+        #     if self.check_cut_ratio(G, partition):
+        #         if len(set(partition)) > n_ans:
+        #             n_ans = len(set(partition))
+        #             partition_ans = partition
+        #         break
+        #     ufactor *= 2
 
-        assert partition_ans, partition_ans
+        # assert partition_ans, partition_ans
 
         print('n_ans, n, left, right= ', n_ans, n, num_left, num_right, self.MAX_UFACTOR, calc_cut_ratio(G, partition_ans))
 

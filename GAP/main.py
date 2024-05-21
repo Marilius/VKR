@@ -9,6 +9,8 @@ import json
 
 import networkx as nx
 
+import time
+
 
 class GAP:
     def __init__(
@@ -154,20 +156,10 @@ class GAP:
                     print(partition)
                     print(f'"{_partition}"')
 
-                    # assert len(set(partition)) <= len(self.PG.nodes())
                     if not partition:
                         return None
 
                     return partition
-                # print(physical_graph)
-                # print(graph)
-
-                # print('------', partition_path, line, '-----------')
-
-        # print(partition)
-        # print(self.f(partition))
-
-        # print(partition)
 
         assert len(partition) == len(self.G), (partition_path, physical_graph_name, len(partition), len(self.G), partition)
 
@@ -192,11 +184,8 @@ class GAP:
         s = 0
         for i in range(self.k):
             t = int(len(G) * r[i])
-            # print(i, t)
 
-            # костыль, которого в статье не было:
             t = max(t, 1)
-            # -------------------- но артефакт забавный - если мощность процессора слишком маленькая/мало вершин в графе, то на него не назначается ни одной работы 
 
             s2 = min(s + t, len(G))
             if i == len(PG) - 1:
@@ -211,7 +200,6 @@ class GAP:
 
     def get_initial_partition(self, G: nx.Graph, PG: nx.Graph, if_do_load: bool = False, path: str | None = None, physical_graph_name: str | None = None) -> list[int] | None:
         if if_do_load and path and physical_graph_name:
-            # print(self.f(self.metis_partition(path, physical_graph_name)))
             return self.metis_partition(path, physical_graph_name)
         return self.initial_partition(G, PG)
 
@@ -233,7 +221,6 @@ class GAP:
         """
         v_cut = self.get_cut_nodes(cut_edges)
 
-        # if not self.n:
         self.n = int(0.4*len(cut_edges))
 
         individuals = []
@@ -308,7 +295,7 @@ class GAP:
             a = randint(0, self.n - 1)
             b = randint(0, self.k - 1)
             v = choice(cut_nodes)
-            # --------------------------------------------------------
+
             while v in individuals[a]:
                 v = choice(cut_nodes)
             individuals[a][b] = v
@@ -321,7 +308,6 @@ class GAP:
             return 2 * self.BIG_NUMBER
 
         new_partition = partition.copy()
-        # print('?',new_partition)
 
         if individual is not None:
             for j in range(self.k):
@@ -332,23 +318,11 @@ class GAP:
 
         t_max = 0
         times = [0] * self.k
-        try:
-            for job, proc in enumerate(new_partition):
-                times[proc] += self.G.nodes[job]['weight']
+        for job, proc in enumerate(new_partition):
+            times[proc] += self.G.nodes[job]['weight']
 
-            for proc in range(self.k):
-                times[proc] /= self.PG.nodes[proc]['weight']
-        except:
-            print(self.PG.nodes())
-            print(self.k)
-            print(times)
-            # print(self.G.nodes)
-            print(partition)
-            print(new_partition)
-            print('CUT_RATIO', self.CUT_RATIO)
-            print('self.G', self.G.graph['graph_name'])
-            print('self.PG', self.PG.graph['graph_name'])
-            raise
+        for proc in range(self.k):
+            times[proc] /= self.PG.nodes[proc]['weight']
 
         t_max = max(times)
 
@@ -406,8 +380,6 @@ class GAP:
         else:
             partition = initial_partition.copy()
 
-        # print('Partition is None')
-
         if partition is None:
             return None
 
@@ -432,7 +404,6 @@ class GAP:
             ####
 
             f_vals = [self.f(partition, i) for i in individuals[:self.n]]
-            # f_vals = [f(i) for i in individuals] # до n ???? - вероятно авторы хотели так
             f_best = min(f_vals)
             individual_best = individuals[f_vals.index(f_best)].copy()
 
@@ -451,8 +422,6 @@ class GAP:
                 j = 0
                 z = 0
 
-                # костыльно, но иначе удаляется больше половины индивидов
-                # как будто можно переписать чище
                 while j + z < self.n and individuals:
                     if len(individuals) == self.n:
                         break
@@ -493,7 +462,7 @@ class GAP:
 
         return partition
 
-    def write_results(self, path: str, physical_graph_path: str, partition: list[int] | None) -> None:
+    def write_results(self, path: str, physical_graph_path: str, partition: list[int] | None, start_time: float) -> None:
         # HEADERS: list[str] = [
         #     'graph',
         #     'physical_graph',
@@ -518,6 +487,7 @@ class GAP:
             partition if (cr := calc_cut_ratio(self.G, partition) is None) or cr <= self.CUT_RATIO else None,
             '\n',
         ]
+        end_time = time.time()
 
         if partition is not None:
             assert partition, (path, partition)
@@ -526,6 +496,23 @@ class GAP:
 
         print(f'writing results to: {path}')
         with open(path, 'a+') as file:
+            file.write(' '.join(map(str, line2write)))
+
+        overall_time = end_time - start_time
+
+        line2write = [
+            path.split('/')[-1],
+            physical_graph_path.split('/')[-1], 
+            self.CUT_RATIO,
+            start_time,
+            str(overall_time),
+            '\n',
+        ]
+
+        print(start_time, str(overall_time))
+        print(line2write)
+
+        with open(path.replace('.txt', '.time'), 'a+') as file:
             file.write(' '.join(map(str, line2write)))
 
     def research(self) -> None:
@@ -553,10 +540,10 @@ class GAP:
 
         pgs = [
             # '1_4x1.txt',
-            # '1_4x2.txt',
+            '1_4x2.txt',
             # '1_4x3.txt',
             # '1_4x4.txt',
-            '1_4x5.txt',
+            # '1_4x5.txt',
             # '3_2x1.txt',
             # '3_2x2.txt',
             # '3_2x3.txt',
@@ -568,10 +555,8 @@ class GAP:
             # '5_4_3_2x4.txt',
             # '5_4_3_2x5.txt',
         ]
-        self.cr_list = [0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]
+
         self.cr_list = [0.4]
-        # self.cr_list = [0.35]
-        # self.cr_list = [0.2]
 
         for input_dir, output_dir in self.graph_dirs:
             for graph_file in listdir(input_dir):
@@ -607,6 +592,7 @@ class GAP:
                                                 # self.write_results(join(output_dir, graph_file), join(physical_graph_dir, physical_graph), partition)
                                                 # from metis
                                                 print('weighted_partition from metis', join(input_dir, graph_file).replace('data', 'results/metis/weighted').replace('/graphs', ''))
+                                                start_time = time.time()
                                                 weighted_partition = self.do_gap(
                                                     graph_path=join(input_dir, graph_file),
                                                     physical_graph_path=join(physical_graph_dir, physical_graph),
@@ -615,9 +601,10 @@ class GAP:
                                                     physical_graph_name=physical_graph
                                                 )
                                                 # assert weighted_partition, ('weighted_partition from metis', join(input_dir, graph_file),)
-                                                self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_metis/weighted'), join(physical_graph_dir, physical_graph), weighted_partition)
+                                                self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_metis/weighted'), join(physical_graph_dir, physical_graph), weighted_partition, start_time)
 
                                                 print('unweighted_partition from metis')
+                                                start_time = time.time()
                                                 unweighted_partition = self.do_gap(
                                                     graph_path=join(input_dir, graph_file),
                                                     physical_graph_path=join(physical_graph_dir, physical_graph),
@@ -626,30 +613,32 @@ class GAP:
                                                     physical_graph_name=physical_graph
                                                 )
                                                 # assert unweighted_partition, ('unweighted_partition from metis', join(input_dir, graph_file),)
-                                                self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_metis/unweighted'), join(physical_graph_dir, physical_graph), unweighted_partition)
+                                                self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_metis/unweighted'), join(physical_graph_dir, physical_graph), unweighted_partition, start_time)
 
-                                                # # from greed
-                                                # print('weighted_partition from greed')
-                                                # weighted_partition = self.do_gap(
-                                                #     graph_path=join(input_dir, graph_file),
-                                                #     physical_graph_path=join(physical_graph_dir, physical_graph),
-                                                #     if_do_load=True,
-                                                #     path=join(input_dir, graph_file).replace('data', 'results/greed/weighted').replace('/graphs', ''),
-                                                #     physical_graph_name=physical_graph
-                                                # )
-                                                # # assert weighted_partition, ('weighted_partition from greed', join(input_dir, graph_file),)
-                                                # self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_greed/weighted'), join(physical_graph_dir, physical_graph), weighted_partition)
+                                                # from greed
+                                                print('weighted_partition from greed')
+                                                start_time = time.time()
+                                                weighted_partition = self.do_gap(
+                                                    graph_path=join(input_dir, graph_file),
+                                                    physical_graph_path=join(physical_graph_dir, physical_graph),
+                                                    if_do_load=True,
+                                                    path=join(input_dir, graph_file).replace('data', 'results/greed/weighted').replace('/graphs', ''),
+                                                    physical_graph_name=physical_graph
+                                                )
+                                                # assert weighted_partition, ('weighted_partition from greed', join(input_dir, graph_file),)
+                                                self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_greed/weighted'), join(physical_graph_dir, physical_graph), weighted_partition, start_time)
 
-                                                # print('unweighted_partition from greed')
-                                                # unweighted_partition = self.do_gap(
-                                                #     graph_path=join(input_dir, graph_file),
-                                                #     physical_graph_path=join(physical_graph_dir, physical_graph),
-                                                #     if_do_load=True,
-                                                #     path=join(input_dir, graph_file).replace('data', 'results/greed/unweighted').replace('/graphs', ''),
-                                                #     physical_graph_name=physical_graph
-                                                # )
-                                                # # assert unweighted_partition, ('unweighted_partition from greed', join(input_dir, graph_file),)
-                                                # self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_greed/unweighted'), join(physical_graph_dir, physical_graph), unweighted_partition)
+                                                print('unweighted_partition from greed')
+                                                start_time = time.time()
+                                                unweighted_partition = self.do_gap(
+                                                    graph_path=join(input_dir, graph_file),
+                                                    physical_graph_path=join(physical_graph_dir, physical_graph),
+                                                    if_do_load=True,
+                                                    path=join(input_dir, graph_file).replace('data', 'results/greed/unweighted').replace('/graphs', ''),
+                                                    physical_graph_name=physical_graph
+                                                )
+                                                # assert unweighted_partition, ('unweighted_partition from greed', join(input_dir, graph_file),)
+                                                self.write_results(join(output_dir, graph_file).replace(self.NAME, f'{self.NAME}_greed/unweighted'), join(physical_graph_dir, physical_graph), unweighted_partition, start_time)
 
                                                 # FROM MK
                                                 # print('partition FROM WEIGHTED MK')
