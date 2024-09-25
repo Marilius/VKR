@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import argparse
 
 import random
@@ -12,7 +10,7 @@ from dataclasses import dataclass
 class Job:
     id: int
     proc: int
-    length: float
+    length: int
     start_time: float
     end_time: float
     edges: list[int]
@@ -137,21 +135,30 @@ for i in jobs:
     n_all += n
 assert n_all == N_e
 
-
 if shuffle:
     jobs_ids = [job.id for job in itertools.chain.from_iterable(jobs)]
-    # zipped = list(zip(jobs_ids, edge_list))
-    # random.shuffle(zipped)
-    # jobs_ids, edge_list = zip(*zipped)
-
-    random.shuffle(jobs_ids)
+    zipped = list(zip(jobs_ids, exact_partition, edge_list))
+    random.shuffle(zipped)
+    jobs_ids, exact_partition, edge_list = zip(*zipped)
 
     for job in itertools.chain.from_iterable(jobs):
-        job.id = jobs_ids[job.id]
-    # for job_edges in edge_list:
-    #     for i in range(len(job_edges)):
-    #         job_edges[i] = jobs_ids[job_edges[i]]
-    assert len(set([job.id for job in itertools.chain.from_iterable(jobs)])) == len([job.id for job in itertools.chain.from_iterable(jobs)])
+        job.id = jobs_ids.index(job.id)
+    for job_edges in edge_list:
+        for i in range(len(job_edges)):
+            job_edges[i] = jobs_ids.index(job_edges[i])
+    assert len(set([job.id for job in itertools.chain.from_iterable(jobs)])) == len(list(itertools.chain.from_iterable(jobs)))
+
+    weights = [0] * len(p)
+    fact_jobs = [[] for _ in range(len(p))]
+    job_list = list(itertools.chain.from_iterable(jobs))
+    for i, proc in enumerate(exact_partition):
+        for job in job_list:
+            if job.id == i:
+                weights[proc] += job.length
+                fact_jobs[proc].append(job.id)
+                break
+    for w in weights:
+        assert w == L
 
 # запись в файл
 NAME_FORMAT = "./data/gen_data/{p}_{L}_{min_l}_{max_l}_{N_e}_{N_s}.txt"

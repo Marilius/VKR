@@ -2,11 +2,13 @@
 from helpers import input_generated_graph_and_processors_from_file
 import metis
 
-path = './data/gen_data/1_1_1_1_300_5_25_500_200.txt'
+# path = './data/gen_data/1_1_1_1_300_5_25_500_200.txt'
+# path = './data/gen_data/3_3_3_3_3000_5_25_500_200.txt'
+path = './data/gen_data/3_3_3_3_300_5_25_500_200.txt'
 
 G, processors, params, exact_partition = input_generated_graph_and_processors_from_file(path)
 nparts = len(processors)
-ufactor = 10
+ufactor = 1
 recursive = True
 
 print(len(G.nodes()), len(G.edges()))
