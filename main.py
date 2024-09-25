@@ -4,7 +4,7 @@ import metis
 
 path = './data/gen_data/1_1_1_1_300_5_25_500_200.txt'
 
-G, processors = input_generated_graph_and_processors_from_file(path)
+G, processors, params, exact_partition = input_generated_graph_and_processors_from_file(path)
 nparts = len(processors)
 ufactor = 10
 recursive = True
@@ -26,6 +26,13 @@ for new_i, i in enumerate(sorted(list(set(partition)))):
 weights = [0] * nparts
 for i in range(len(partition)):
     weights[partition[i]] += G.nodes[i]['weight']
-
+print(weights)
 print(partition)
+
+
+print(exact_partition)
+print(len(exact_partition), len(partition))
+weights = [0] * nparts
+for i in range(len(exact_partition)):
+    weights[exact_partition[i]] += G.nodes[i]['weight']
 print(weights)

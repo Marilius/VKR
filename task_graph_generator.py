@@ -27,7 +27,7 @@ parser.add_argument('-max_l', type=int, help='Максимальная длит�
 # parser.add_argument('-D', type=float, help='Плотность графа.')
 parser.add_argument('-N_e', type=int, help='Число рёбер.')
 parser.add_argument('-N_s', type=int, help='Число секущих рёбер.')
-parser.add_argument('-shuffle', type=bool, help='Перемешивание номеров вершин.', default=False)
+parser.add_argument('--shuffle', dest='shuffle', action='store_true', help='Перемешивание номеров вершин.', default=False)
 
 # парсим командную строку
 args = parser.parse_args()
@@ -41,8 +41,8 @@ N_s = args.N_s
 shuffle = args.shuffle
 
 # создание вершин графа
-n0 = 0
-jobs = [[] for _ in range(len(p))]
+n0: int = 0
+jobs: list[list[Job]] = [[] for _ in range(len(p))]
 for i in range(len(p)):
     f = True
     while f:
@@ -68,7 +68,9 @@ for i in range(len(p)):
             assert time_left >= 0
 
     n0 = n
-
+exact_partition: list[int] = list(itertools.chain.from_iterable([[proc] * len(job_list) for proc, job_list in enumerate(jobs)]))
+# print(exact_partition)
+assert len(exact_partition) == len(list(itertools.chain.from_iterable(jobs)))
 
 for i in range(len(p)):
     for job in jobs[i]:
@@ -97,23 +99,13 @@ while n:
         edge_list[first].append(second)
         n -= 1
 
-for i in edge_list:
-    print(len(i), end=' ')
-print()
-print()
-print()
-
 n_all = 0
 for i in jobs:
     n = 0
     for j in i:
         n += len(edge_list[j.id])
-    print(n, end=' ')
     n_all += n
 
-print()
-print(n_all)
-print()
 assert n_all == N_e - N_s, f'{n_all} != {N_e - N_s}'
 
 
@@ -137,32 +129,33 @@ while n:
         edge_list[first].append(second)
         n -= 1
 
-print()
-print()
-print()
-
 n_all = 0
 for i in jobs:
     n = 0
     for j in i:
         n += len(edge_list[j.id])
-    print(n, end=' ')
     n_all += n
 assert n_all == N_e
 
-print()
-print(n_all)
-print()
 
-print('jobs')
-print(jobs)
-print(edge_list)
+if shuffle:
+    jobs_ids = [job.id for job in itertools.chain.from_iterable(jobs)]
+    # zipped = list(zip(jobs_ids, edge_list))
+    # random.shuffle(zipped)
+    # jobs_ids, edge_list = zip(*zipped)
 
+    random.shuffle(jobs_ids)
 
+    for job in itertools.chain.from_iterable(jobs):
+        job.id = jobs_ids[job.id]
+    # for job_edges in edge_list:
+    #     for i in range(len(job_edges)):
+    #         job_edges[i] = jobs_ids[job_edges[i]]
+    assert len(set([job.id for job in itertools.chain.from_iterable(jobs)])) == len([job.id for job in itertools.chain.from_iterable(jobs)])
+
+# запись в файл
 NAME_FORMAT = "./data/gen_data/{p}_{L}_{min_l}_{max_l}_{N_e}_{N_s}.txt"
-
-FORMAT = "{p}\n{L}\n{min_l} {max_l}\n{N_e} {N_s}\n"
-
+FORMAT = "{p}\n{L}\n{min_l} {max_l}\n{N_e} {N_s}\n{exact_partition}\n"
 NODE_FORMAT = "{id} {weight} {child_list}\n"
 
 name = NAME_FORMAT.format(
@@ -171,7 +164,7 @@ name = NAME_FORMAT.format(
     min_l=min_l,
     max_l=max_l,
     N_e=N_e,
-    N_s=N_s
+    N_s=N_s,
 )
 
 with open(name, 'w+') as f:
@@ -181,15 +174,9 @@ with open(name, 'w+') as f:
         min_l=min_l,
         max_l=max_l,
         N_e=N_e,
-        N_s=N_s
+        N_s=N_s,
+        exact_partition=' '.join(map(str, exact_partition))
     ))
-
-    # for i in itertools.chain.from_iterable(jobs):
-    #     f.write(NODE_FORMAT.format(
-    #         id=i.id,
-    #         weight=i.length, # TODO УМНОЖЕНИЕ НА МОЩНОСТЬ ПРОЦЕССОРА
-    #         child_list=' '.join(map(str, sorted(edge_list[i.id])))
-    #     ))
 
     for proc_weight, proc_jobs in zip(p, jobs):
         for job in proc_jobs:

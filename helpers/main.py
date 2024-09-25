@@ -60,20 +60,23 @@ def input_networkx_unweighted_graph_from_file(path: str) -> nx.Graph:
     return G
 
 
-def input_generated_graph_and_processors_from_file(path: str) -> tuple[nx.Graph, list[int]]:
+def input_generated_graph_and_processors_from_file(path: str) -> tuple[nx.Graph, list[int], dict[str, int|list[int]], list[int]]:
     if not isfile(path):
         raise FileNotFoundError(f'File {path} not found')
         
-    # FORMAT = "{p}\n{L}\n{min_l} {max_l}\n{N_e} {N_s}\n"
+    # FORMAT = "{p}\n{L}\n{min_l} {max_l}\n{N_e} {N_s}\n{exact_partition}\n"
 
     G = nx.Graph()
+    params: dict[str, int|list[int]] = {}
 
     with open(path, 'r') as f:
-        # print(f.readline().strip().split())
         p = list(map(int, f.readline().strip().split()))
         L = int(f.readline())
         min_l, max_l = list(map(int, f.readline().strip().split()))
         N_e, N_s = list(map(int, f.readline().strip().split()))
+        exact_partition = list(map(int, f.readline().strip().split()))
+
+        params = {'p': p, 'L': L, 'min_l': min_l, 'max_l': max_l, 'N_e': N_e, 'N_s': N_s}
 
         for line in f.readlines():
             name, size, *children = map(int, line.strip().split())
@@ -86,7 +89,7 @@ def input_generated_graph_and_processors_from_file(path: str) -> tuple[nx.Graph,
     graph_name = path.split('/')[-1].split('.')[0]
     G.graph['graph_name'] = graph_name
 
-    return G, p
+    return G, p, params, exact_partition
 
 
 def calc_edgecut(G: nx.Graph, partition: list[int]) -> int:
