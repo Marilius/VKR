@@ -60,6 +60,35 @@ def input_networkx_unweighted_graph_from_file(path: str) -> nx.Graph:
     return G
 
 
+def input_generated_graph_and_processors_from_file(path: str) -> tuple[nx.Graph, list[int]]:
+    if not isfile(path):
+        raise FileNotFoundError(f'File {path} not found')
+        
+    # FORMAT = "{p}\n{L}\n{min_l} {max_l}\n{N_e} {N_s}\n"
+
+    G = nx.Graph()
+
+    with open(path, 'r') as f:
+        # print(f.readline().strip().split())
+        p = list(map(int, f.readline().strip().split()))
+        L = int(f.readline())
+        min_l, max_l = list(map(int, f.readline().strip().split()))
+        N_e, N_s = list(map(int, f.readline().strip().split()))
+
+        for line in f.readlines():
+            name, size, *children = map(int, line.strip().split())
+            # name = int(name)
+            children = list(map(int, children))
+            G.add_node(name, weight=size)
+            G.add_edges_from((name, child) for child in children)
+    G.graph['node_weight_attr'] = 'weight'
+    
+    graph_name = path.split('/')[-1].split('.')[0]
+    G.graph['graph_name'] = graph_name
+
+    return G, p
+
+
 def calc_edgecut(G: nx.Graph, partition: list[int]) -> int:
     edgecut = 0
     # print(partition)

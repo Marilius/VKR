@@ -1,3 +1,5 @@
+https://github.com/Marilius/VKR
+
 Требования: 
     python 3.12
     networkx
