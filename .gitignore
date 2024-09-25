@@ -1,8 +1,11 @@
 .venv
 mk_cache
+mk_cache/*
 cache
+cache/*
 graphs_rand.rar
 graphs_rand.rar:Zone.identifier
 
 
 */__pycache__
+__pycache__
