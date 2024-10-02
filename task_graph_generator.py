@@ -16,27 +16,38 @@ class Job:
     edges: list[int]
 
 
+class RandomException(Exception):
+    """
+    Превышено число попыток нарандомить.
+    """
+    pass
+
+
 parser = argparse.ArgumentParser(description='Генератор графа по параметрам.')
 
 parser.add_argument('-p', nargs="+", type=int, help='Производительности процессоров')
 parser.add_argument('-L', type=int, help='Суммарная длительность работ на процессоре, одинаковая для каждого процессора.')
 parser.add_argument('-min_l', type=int, help='Минимальная длительность работ на процессоре.')
 parser.add_argument('-max_l', type=int, help='Максимальная длительность работ на процессоре.')
-# parser.add_argument('-D', type=float, help='Плотность графа.')
-parser.add_argument('-N_e', type=int, help='Число рёбер.')
-parser.add_argument('-N_s', type=int, help='Число секущих рёбер.')
-parser.add_argument('--shuffle', dest='shuffle', action='store_true', help='Перемешивание номеров вершин.', default=False)
+parser.add_argument('-N', type=int, help='Число рёбер на вершину.')
+parser.add_argument('-cr', type=float, help='Доля секущих рёбер.')
+parser.add_argument('-n_tries', type=int, help='Число попыток нарандомить.', default=100)
+# parser.add_argument('-N_e', type=int, help='Число рёбер.')
+# parser.add_argument('-N_s', type=int, help='Число секущих рёбер.')
+parser.add_argument('--shuffle_off', dest='shuffle', action='store_false', help='Перемешивание номеров вершин.', default=True)
 
 # парсим командную строку
 args = parser.parse_args()
-p = args.p
-L = args.L
-min_l = args.min_l
-max_l = args.max_l
-# D = args.D
-N_e = args.N_e
-N_s = args.N_s
-shuffle = args.shuffle
+p: list[int] = args.p
+L: int = args.L
+min_l: int = args.min_l
+max_l: int = args.max_l
+N: int = args.N
+cr: float = args.cr
+n_tries: int = args.n_tries
+# N_e: int = args.N_e
+# N_s: int = args.N_s
+shuffle: bool = args.shuffle
 
 # создание вершин графа
 n0: int = 0
@@ -53,7 +64,11 @@ for i in range(len(p)):
             end_time = min(start_time + curr_time, L)
             curr_time = end_time - start_time
             
+            if n_tries <= 0:
+                raise RandomException()
+
             if curr_time < min_l:
+                n_tries -= 1
                 f = True
                 jobs[i] = []
                 break
@@ -66,6 +81,11 @@ for i in range(len(p)):
             assert time_left >= 0
 
     n0 = n
+
+# число рёбер и число секущих рёбер
+N_e: int = n0 * N 
+N_s: int = int(N_e * cr)
+
 exact_partition: list[int] = list(itertools.chain.from_iterable([[proc] * len(job_list) for proc, job_list in enumerate(jobs)]))
 # print(exact_partition)
 assert len(exact_partition) == len(list(itertools.chain.from_iterable(jobs)))
@@ -88,7 +108,9 @@ while n:
     proc_num = random.randint(0, len(jobs) - 1)
     
     while (first := random.choice(jobs[proc_num]).id) == (second := random.choice(jobs[proc_num]).id):
-        ...
+        if n_tries <= 0:
+            raise RandomException()
+        n_tries -= 1
     
     first, second = min(first, second), max(first, second)
 
@@ -111,7 +133,9 @@ assert n_all == N_e - N_s, f'{n_all} != {N_e - N_s}'
 n = N_s
 while n:
     while (proc_first := random.randint(0, len(jobs) - 1)) == (proc_second := random.randint(0, len(jobs) - 1)):
-        ...
+        if n_tries <= 0:
+            raise RandomException()
+        n_tries -= 1
     
     first_job = random.choice(jobs[proc_first]) 
     second_job = random.choice(jobs[proc_second])
@@ -161,7 +185,7 @@ if shuffle:
         assert w == L
 
 # запись в файл
-NAME_FORMAT = "./data/gen_data/{p}_{L}_{min_l}_{max_l}_{N_e}_{N_s}.txt"
+NAME_FORMAT = "./data/gen_data/{p}_{L}_{min_l}_{max_l}_{N}_{cr}_{shuffle}.txt"
 FORMAT = "{p}\n{L}\n{min_l} {max_l}\n{N_e} {N_s}\n{exact_partition}\n"
 NODE_FORMAT = "{id} {weight} {child_list}\n"
 
@@ -170,8 +194,9 @@ name = NAME_FORMAT.format(
     L=L,
     min_l=min_l,
     max_l=max_l,
-    N_e=N_e,
-    N_s=N_s,
+    N=N,
+    cr=cr,
+    shuffle=shuffle,
 )
 
 with open(name, 'w+') as f:
