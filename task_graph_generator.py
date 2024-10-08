@@ -185,10 +185,11 @@ if shuffle:
         assert w == L
 
 # запись в файл
-GRAPH_NAME_FORMAT = "./data/gen_data/{p}_{L}_{min_l}_{max_l}_{N}_{cr}_{shuffle}.graph"
-PARTITION_NAME_FORMAT = "./data/gen_data/{p}_{L}_{min_l}_{max_l}_{N}_{cr}_{shuffle}.partition"
-FORMAT = "{p}\n{L}\n{min_l} {max_l}\n{N_e} {N_s}\n{exact_partition}\n"
-NODE_FORMAT = "{id} {weight} {child_list}\n"
+GRAPH_NAME_FORMAT = './data/gen_data/{p}_{L}_{min_l}_{max_l}_{N}_{cr}_{shuffle}.graph'
+GRAPH_FORMAT = '{p}\n{L}\n{min_l} {max_l}\n{N_e} {N_s}\n'
+NODE_FORMAT = '{id} {weight} {child_list}\n'
+PARTITION_NAME_FORMAT = './data/gen_data/{p}_{L}_{min_l}_{max_l}_{N}_{cr}_{shuffle}.partition'
+PARTITION_FORMAT = '{exact_partition}\n'
 
 name = GRAPH_NAME_FORMAT.format(
     p='_'.join(map(str, p)),
@@ -201,15 +202,15 @@ name = GRAPH_NAME_FORMAT.format(
 )
 
 with open(name, 'w+') as f:
-    f.write(FORMAT.format(
+    f.write(GRAPH_FORMAT.format(
         p=' '.join(map(str, p)),
         L=L,
         min_l=min_l,
         max_l=max_l,
         N_e=N_e,
         N_s=N_s,
-        exact_partition=' '.join(map(str, exact_partition))
-    ))
+        )
+    )
 
     lines = []
 
@@ -217,24 +218,30 @@ with open(name, 'w+') as f:
         for job in proc_jobs:
             lines.append(
                 (
-                # NODE_FORMAT.format(
                     job.id,
                     proc_weight * job.length,
                     ' '.join(map(str, sorted(edge_list[job.id])))
                 )
-                # )
             )
 
     lines.sort(key=lambda x: x[0])
-    # lines = list(map(' '.join, lines))
     for line in lines:
         print(line)
         line = dict(zip(('id', 'weight', 'child_list'), line))
         f.write(NODE_FORMAT.format(**line))
 
+name = PARTITION_NAME_FORMAT.format(
+    p='_'.join(map(str, p)),
+    L=L,
+    min_l=min_l,
+    max_l=max_l,
+    N=N,
+    cr=cr,
+    shuffle=shuffle,
+)
 
-            # f.write(NODE_FORMAT.format(
-            #     id=job.id,
-            #     weight=proc_weight * job.length,
-            #     child_list=' '.join(map(str, sorted(edge_list[job.id])))
-            # ))
+with open(name, 'w+') as f:
+    f.write(PARTITION_FORMAT.format(
+            exact_partition=' '.join(map(str, exact_partition))
+        )
+    )
