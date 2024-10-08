@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import argparse
 
 import random
@@ -35,6 +37,8 @@ parser.add_argument('-n_tries', type=int, help='Число попыток нар
 # parser.add_argument('-N_e', type=int, help='Число рёбер.')
 # parser.add_argument('-N_s', type=int, help='Число секущих рёбер.')
 parser.add_argument('--shuffle_off', dest='shuffle', action='store_false', help='Перемешивание номеров вершин.', default=True)
+
+WRITE_UNSHUFFLED = True
 
 # парсим командную строку
 args = parser.parse_args()
@@ -159,6 +163,11 @@ for i in jobs:
     n_all += n
 assert n_all == N_e
 
+if WRITE_UNSHUFFLED and shuffle:
+    initial_jobs = deepcopy(jobs)
+    initial_exact_partition = deepcopy(exact_partition)
+    initial_edge_list = deepcopy(edge_list)
+
 if shuffle:
     jobs_ids = [job.id for job in itertools.chain.from_iterable(jobs)]
     zipped = list(zip(jobs_ids, exact_partition, edge_list))
@@ -202,13 +211,14 @@ name = GRAPH_NAME_FORMAT.format(
 )
 
 with open(name, 'w+') as f:
-    f.write(GRAPH_FORMAT.format(
-        p=' '.join(map(str, p)),
-        L=L,
-        min_l=min_l,
-        max_l=max_l,
-        N_e=N_e,
-        N_s=N_s,
+    f.write(
+        GRAPH_FORMAT.format(
+            p=' '.join(map(str, p)),
+            L=L,
+            min_l=min_l,
+            max_l=max_l,
+            N_e=N_e,
+            N_s=N_s,
         )
     )
 
@@ -245,3 +255,60 @@ with open(name, 'w+') as f:
             exact_partition=' '.join(map(str, exact_partition))
         )
     )
+
+if WRITE_UNSHUFFLED and shuffle:
+    name = GRAPH_NAME_FORMAT.format(
+        p='_'.join(map(str, p)),
+        L=L,
+        min_l=min_l,
+        max_l=max_l,
+        N=N,
+        cr=cr,
+        shuffle=False,
+    )
+
+    with open(name, 'w+') as f:
+        f.write(
+            GRAPH_FORMAT.format(
+                p=' '.join(map(str, p)),
+                L=L,
+                min_l=min_l,
+                max_l=max_l,
+                N_e=N_e,
+                N_s=N_s,
+            )
+        )
+
+        lines = []
+
+        for proc_weight, proc_jobs in zip(p, initial_jobs):
+            for job in proc_jobs:
+                lines.append(
+                    (
+                        job.id,
+                        proc_weight * job.length,
+                        ' '.join(map(str, sorted(initial_edge_list[job.id])))
+                    )
+                )
+
+        lines.sort(key=lambda x: x[0])
+        for line in lines:
+            print(line)
+            line = dict(zip(('id', 'weight', 'child_list'), line))
+            f.write(NODE_FORMAT.format(**line))
+
+    name = PARTITION_NAME_FORMAT.format(
+        p='_'.join(map(str, p)),
+        L=L,
+        min_l=min_l,
+        max_l=max_l,
+        N=N,
+        cr=cr,
+        shuffle=False,
+    )
+
+    with open(name, 'w+') as f:
+        f.write(PARTITION_FORMAT.format(
+                exact_partition=' '.join(map(str, initial_exact_partition))
+            )
+        )
