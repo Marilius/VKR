@@ -185,11 +185,12 @@ if shuffle:
         assert w == L
 
 # запись в файл
-NAME_FORMAT = "./data/gen_data/{p}_{L}_{min_l}_{max_l}_{N}_{cr}_{shuffle}.txt"
+GRAPH_NAME_FORMAT = "./data/gen_data/{p}_{L}_{min_l}_{max_l}_{N}_{cr}_{shuffle}.graph"
+PARTITION_NAME_FORMAT = "./data/gen_data/{p}_{L}_{min_l}_{max_l}_{N}_{cr}_{shuffle}.partition"
 FORMAT = "{p}\n{L}\n{min_l} {max_l}\n{N_e} {N_s}\n{exact_partition}\n"
 NODE_FORMAT = "{id} {weight} {child_list}\n"
 
-name = NAME_FORMAT.format(
+name = GRAPH_NAME_FORMAT.format(
     p='_'.join(map(str, p)),
     L=L,
     min_l=min_l,
@@ -210,10 +211,30 @@ with open(name, 'w+') as f:
         exact_partition=' '.join(map(str, exact_partition))
     ))
 
+    lines = []
+
     for proc_weight, proc_jobs in zip(p, jobs):
         for job in proc_jobs:
-            f.write(NODE_FORMAT.format(
-                id=job.id,
-                weight=proc_weight * job.length,
-                child_list=' '.join(map(str, sorted(edge_list[job.id])))
-            ))
+            lines.append(
+                (
+                # NODE_FORMAT.format(
+                    job.id,
+                    proc_weight * job.length,
+                    ' '.join(map(str, sorted(edge_list[job.id])))
+                )
+                # )
+            )
+
+    lines.sort(key=lambda x: x[0])
+    # lines = list(map(' '.join, lines))
+    for line in lines:
+        print(line)
+        line = dict(zip(('id', 'weight', 'child_list'), line))
+        f.write(NODE_FORMAT.format(**line))
+
+
+            # f.write(NODE_FORMAT.format(
+            #     id=job.id,
+            #     weight=proc_weight * job.length,
+            #     child_list=' '.join(map(str, sorted(edge_list[job.id])))
+            # ))
