@@ -2,10 +2,11 @@ from .main import MK
 
 
 graph_dirs = [
-    './data/testing_graphs',
-    './data/triangle/graphs',
-    './data/sausages',
-    './data/rand',
+    # './data/testing_graphs',
+    # './data/triangle/graphs',
+    # './data/sausages',
+    # './data/rand',
+    './data/gen_data',
 ]
 
 mk = MK(data_dirs=graph_dirs)

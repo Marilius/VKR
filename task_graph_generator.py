@@ -31,7 +31,7 @@ parser.add_argument('-p', nargs="+", type=int, help='Производитель�
 parser.add_argument('-L', type=int, help='Суммарная длительность работ на процессоре, одинаковая для каждого процессора.')
 parser.add_argument('-min_l', type=int, help='Минимальная длительность работ на процессоре.')
 parser.add_argument('-max_l', type=int, help='Максимальная длительность работ на процессоре.')
-parser.add_argument('-N', type=int, help='Число рёбер на вершину.')
+parser.add_argument('-N', type=float, help='Число рёбер на вершину.')
 parser.add_argument('-cr', type=float, help='Доля секущих рёбер.')
 parser.add_argument('-n_tries', type=int, help='Число попыток нарандомить.', default=100)
 # parser.add_argument('-N_e', type=int, help='Число рёбер.')
@@ -46,7 +46,7 @@ p: list[int] = args.p
 L: int = args.L
 min_l: int = args.min_l
 max_l: int = args.max_l
-N: int = args.N
+N: float = args.N
 cr: float = args.cr
 n_tries: int = args.n_tries
 # N_e: int = args.N_e
@@ -87,7 +87,7 @@ for i in range(len(p)):
     n0 = n
 
 # число рёбер и число секущих рёбер
-N_e: int = n0 * N 
+N_e: int = int(n0 * N) 
 N_s: int = int(N_e * cr)
 
 exact_partition: list[int] = list(itertools.chain.from_iterable([[proc] * len(job_list) for proc, job_list in enumerate(jobs)]))
@@ -236,9 +236,10 @@ with open(name, 'w+') as f:
 
     lines.sort(key=lambda x: x[0])
     for line in lines:
-        print(line)
+        # print(line)
         line = dict(zip(('id', 'weight', 'child_list'), line))
         f.write(NODE_FORMAT.format(**line))
+print(name)
 
 name = PARTITION_NAME_FORMAT.format(
     p='_'.join(map(str, p)),
@@ -249,6 +250,7 @@ name = PARTITION_NAME_FORMAT.format(
     cr=cr,
     shuffle=shuffle,
 )
+
 
 with open(name, 'w+') as f:
     f.write(PARTITION_FORMAT.format(
@@ -293,7 +295,7 @@ if WRITE_UNSHUFFLED and shuffle:
 
         lines.sort(key=lambda x: x[0])
         for line in lines:
-            print(line)
+            # print(line)
             line = dict(zip(('id', 'weight', 'child_list'), line))
             f.write(NODE_FORMAT.format(**line))
 

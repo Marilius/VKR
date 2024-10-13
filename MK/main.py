@@ -1,4 +1,4 @@
-from helpers import input_networkx_graph_from_file, input_networkx_unweighted_graph_from_file, calc_cut_ratio
+from helpers import input_networkx_graph_from_file, input_networkx_unweighted_graph_from_file, calc_cut_ratio, input_generated_graph_and_processors_from_file
 from base_partitioner import BasePartitioner
 
 import networkx as nx
@@ -23,7 +23,11 @@ class MK(BasePartitioner):
         if self.CUT_RATIO == 1:
             self.CUT_RATIO = 1
 
+        # print(g_name)
+        # print(g_name)
+
         output_file = self.output_folder.format(g_name.replace('.', str(self.CUT_RATIO) + '.'))
+        # print(output_file)
 
         with open(output_file, 'w+') as file:
             file.write('name weight children\n')
@@ -38,7 +42,8 @@ class MK(BasePartitioner):
                 line.append('\n')
                 file.write(' '.join(line))
 
-        output_file = self.output_folder.format(g_name.replace('.txt', str(self.CUT_RATIO) + '.' + 'mapping'))
+        ending2replace = '.txt' if 'txt' in g_name else '.graph'
+        output_file = self.output_folder.format(g_name.replace(ending2replace, str(self.CUT_RATIO) + '.' + 'mapping'))
         with open(output_file, 'w+') as file:
             file.write(' '.join(map(str, mk_partition)))
     
@@ -256,7 +261,7 @@ class MK(BasePartitioner):
 
         for input_dir in self.data_dirs:
             for graph_file in os.listdir(input_dir):
-                if os.path.isfile(os.path.join(input_dir, graph_file)) and 'dagP38' in graph_file:
+                if os.path.isfile(os.path.join(input_dir, graph_file)) and 'partition' not in graph_file:
                     g_path = os.path.join(input_dir, graph_file)
                     print(g_path)
                     for cr in cr_list:
@@ -265,27 +270,51 @@ class MK(BasePartitioner):
 
                         self.CUT_RATIO = cr
 
+                        G_weighted: nx.Graph
                         # weighted
-                        G_weighted = input_networkx_graph_from_file(g_path)
+                        if 'gen_data' in g_path:
+                            G_weighted, _, _ = input_generated_graph_and_processors_from_file(g_path)
+                        else:
+                            G_weighted = input_networkx_graph_from_file(g_path)
 
+                        print(G_weighted)
                         (_, weighted_partition) = self.mk_part(G_weighted)
 
                         if weighted_partition is None:
                             print(g_path, self.CUT_RATIO)
                             continue
 
+                        print(G_weighted.graph['graph_name'])
                         mk_graph = self.group_mk(G_weighted, weighted_partition)
-                        self.write_mk(graph_file.replace('.', '_weighted.'), mk_graph, weighted_partition)
+                        print(mk_graph.graph['graph_name'])
+                        self.write_mk(graph_file + '_weighted', mk_graph, weighted_partition)
+                        # self.write_mk(graph_file.replace('.', '_weighted.'), mk_graph, weighted_partition)
 
-                        # unweighted
-                        G_unweighted = input_networkx_unweighted_graph_from_file(g_path)
+                        # # unweighted
+                        # G_unweighted = input_networkx_unweighted_graph_from_file(g_path)
 
-                        (_, unweighted_partition) = self.mk_part(G_unweighted)
+                        # (_, unweighted_partition) = self.mk_part(G_unweighted)
 
-                        if unweighted_partition is None:
-                            print(g_path, self.CUT_RATIO)
-                            continue
+                        # if unweighted_partition is None:
+                        #     print(g_path, self.CUT_RATIO)
+                        #     continue
 
-                        mk_graph = self.group_mk(G_unweighted, unweighted_partition)
+                        # mk_graph = self.group_mk(G_unweighted, unweighted_partition)
 
-                        self.write_mk(graph_file.replace('.', '_unweighted.'), mk_graph, unweighted_partition)
+                        # self.write_mk(graph_file.replace('.', '_unweighted.'), mk_graph, unweighted_partition)
+
+    def part_graph(self, graph: nx.Graph):
+        cr_list = [i/100 for i in range(5, 100)] + [1]
+
+        for cr in cr_list:
+            self.CUT_RATIO = cr
+
+            # weighted
+
+            (_, partition) = self.mk_part(graph)
+
+            if partition is None:
+                continue
+
+            mk_graph = self.group_mk(graph, partition)
+            self.write_mk(graph_file.replace('.', '_weighted.'), mk_graph, partition)
