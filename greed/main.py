@@ -59,7 +59,7 @@ class Greed(BasePartitioner):
             path.split('/')[-1],
             physical_graph_path.split('/')[-1],
             self.CUT_RATIO,
-            len(partition),
+            len(partition) if partition is not None else None,
             start_time,
             str(overall_time),
             '\n',
@@ -498,7 +498,7 @@ class Greed(BasePartitioner):
         cr_list_big = [0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1]
         cr_list = cr_list_little + cr_list_big
         # cr_list =  cr_list_big
-        cr_list = [0.4]
+        cr_list = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.8, 0.9, 1]
 
         for input_dir, output_dir in graph_dirs:
             for graph_file in listdir(input_dir):
@@ -506,6 +506,23 @@ class Greed(BasePartitioner):
                     for physical_graph_dir in physical_graph_dirs:
                         for physical_graph_path in listdir(physical_graph_dir):
                             if isfile(join(physical_graph_dir, physical_graph_path)): # and '1_4x2.txt' in physical_graph_path:
+                                graph_name = physical_graph_path.split('.')[0]
+                                graph_name = graph_name.split('x')
+                                # print(graph_name)
+                                # graph_name = (graph_name[0] + '_') * int(graph_name[1])
+                                # graph_name = graph_name.strip('_')
+                                
+                                # if '1_4x2' not in physical_graph_path or '3000' not in graph_file or '100' not in graph_file or '0.3' not in graph_file or '1.6' not in graph_file:
+                                    # continue
+                                # if 'True' not in graph_file:
+                                    # continue
+                                    
+                                print(graph_file)
+                                # print(physical_graph_path)
+
+                                # if 'gen_data' in input_dir and graph_file.count(graph_name[0]) != int(graph_name[1]):
+                                    # continue
+
                                 for cr in cr_list:
                                     self.CUT_RATIO = cr
                                     weighted_graph: nx.Graph
@@ -539,7 +556,7 @@ class Greed(BasePartitioner):
                                     # self.write_results(join(output_dir.format('unweighted/'), graph_file), join(physical_graph_dir, physical_graph_path), unweighted_partition, weighted_graph, physical_graph, start_time)
 
                                     # print('from mk weighted')
-                                    # self.CUT_RATIO = 1
+                                    # self.CUT_RATIO = 1 
                                     # output_dir_mk = output_dir.replace('greed', 'greed_from_mk_weighted')
                                     # mk_path = self.MK_DIR + '/' + graph_file.replace('.', '_weighted.').replace('.', str(cr) + '.')
                                     # mk_data_path = self.MK_DIR + '/' + graph_file.replace('.', '_weighted.').replace('.txt', str(cr) + '.' + 'mapping')
