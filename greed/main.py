@@ -440,7 +440,7 @@ class Greed(BasePartitioner):
         unweighted_partition = self.do_metis_with_pg(unweighted_graph, physical_graph)
         self.write_results(join(output_dir_mk.format('unweighted/'), graph_file), join(physical_graph_dir, physical_graph_path), unweighted_partition, weighted_graph, physical_graph, start_time)
 
-    def run(self, graph: nx.Graph, physical_graph: nx.Graph, cr: int | None = None) -> list[int] | None:
+    def run(self, graph: nx.Graph, physical_graph: nx.Graph, cr: float | None = None) -> list[int] | None:
         if cr is not None:
             self.CUT_RATIO = cr
 
@@ -465,8 +465,6 @@ class Greed(BasePartitioner):
         physical_graph_dirs = [
             r'./data/physical_graphs',
         ]
-
-        print('3')
 
         graphs = [
             # '16_envelope_mk_eq.txt',
