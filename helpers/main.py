@@ -4,6 +4,13 @@ from os.path import isfile
 
 from time import sleep
 
+def input_graph(path: str) -> nx.Graph:
+    if 'gen_data' in path:
+        graph, _, _ = input_generated_graph_and_processors_from_file(path)
+    else:
+        graph = input_networkx_graph_from_file(path)
+        
+    return graph
 
 def input_networkx_graph_from_file(path: str) -> nx.Graph:
     G = nx.Graph()

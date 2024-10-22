@@ -1,4 +1,4 @@
-from helpers import input_networkx_graph_from_file, input_networkx_unweighted_graph_from_file, calc_cut_ratio, input_generated_graph_and_processors_from_file
+from helpers import input_graph, input_networkx_unweighted_graph_from_file, calc_cut_ratio, input_generated_graph_and_processors_from_file
 from base_partitioner import BasePartitioner
 
 import networkx as nx
@@ -270,12 +270,8 @@ class MK(BasePartitioner):
 
                         self.CUT_RATIO = cr
 
-                        G_weighted: nx.Graph
                         # weighted
-                        if 'gen_data' in g_path:
-                            G_weighted, _, _ = input_generated_graph_and_processors_from_file(g_path)
-                        else:
-                            G_weighted = input_networkx_graph_from_file(g_path)
+                        G_weighted: nx.Graph = input_graph(g_path)
 
                         print(G_weighted)
                         (_, weighted_partition) = self.mk_part(G_weighted)

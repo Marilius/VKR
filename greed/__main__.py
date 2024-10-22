@@ -1,6 +1,6 @@
 from .main import Greed
 
-from helpers import input_networkx_graph_from_file, input_networkx_unweighted_graph_from_file
+from helpers import input_graph, input_networkx_unweighted_graph_from_file
 
 import sys
 
@@ -10,9 +10,9 @@ match sys.argv[1:]:
         greed = Greed()
         CUT_RATIO = cr
 
-        weighted_graph = input_networkx_graph_from_file(g_path)
+        weighted_graph = input_graph(g_path)
         unweighted_graph = input_networkx_unweighted_graph_from_file(g_path)
-        physical_graph = input_networkx_graph_from_file(pg_path)
+        physical_graph = input_graph(pg_path)
 
         if output_dir.endswith('{}'):
             pass

@@ -1,4 +1,4 @@
-from helpers import input_networkx_graph_from_file, input_networkx_unweighted_graph_from_file, calc_edgecut, calc_cut_ratio, do_unpack_mk, unpack_mk
+from helpers import input_graph, input_networkx_unweighted_graph_from_file, calc_edgecut, calc_cut_ratio, do_unpack_mk, unpack_mk
 
 from os import listdir, makedirs
 from os.path import isfile, join

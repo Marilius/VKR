@@ -1,4 +1,4 @@
-from helpers import input_networkx_graph_from_file, input_networkx_unweighted_graph_from_file, calc_cut_ratio, do_unpack_mk, unpack_mk, input_generated_graph_and_processors_from_file
+from helpers import input_graph, input_networkx_unweighted_graph_from_file, calc_cut_ratio, do_unpack_mk, unpack_mk, input_generated_graph_and_processors_from_file
 from MK import MK
 from base_partitioner import BasePartitioner
 
@@ -197,13 +197,8 @@ class Greed(BasePartitioner):
         print('do_MK_greed_greed')
 
         output_dir = output_dir.replace('results', 'results2')
-        weighted_graph: nx.Graph
-        if 'gen_data' in input_dir:
-            weighted_graph, _, _ = input_generated_graph_and_processors_from_file(join(input_dir, graph_file))
-        else:
-            weighted_graph = input_networkx_graph_from_file(join(input_dir, graph_file))
-        # weighted_graph = input_networkx_graph_from_file(join(input_dir, graph_file))
-        physical_graph = input_networkx_graph_from_file(join(physical_graph_dir, physical_graph_path))
+        weighted_graph: nx.Graph = input_graph(join(input_dir, graph_file))
+        physical_graph = input_graph(join(physical_graph_dir, physical_graph_path))
         output_dir_mk = output_dir.replace('greed', 'MK_greed_greed_weighted')
 
         start_time = time.time()
@@ -302,14 +297,8 @@ class Greed(BasePartitioner):
 
         output_dir = output_dir.replace('results', 'results2')
         
-        weighted_graph: nx.Graph
-        if 'gen_data' in input_dir:
-            weighted_graph, _, _ = input_generated_graph_and_processors_from_file(join(input_dir, graph_file))
-        else:
-            weighted_graph = input_networkx_graph_from_file(join(input_dir, graph_file))
-
-        # weighted_graph = input_networkx_graph_from_file(join(input_dir, graph_file))
-        physical_graph = input_networkx_graph_from_file(join(physical_graph_dir, physical_graph_path))
+        weighted_graph: nx.Graph = input_graph(join(input_dir, graph_file))
+        physical_graph = input_graph(join(physical_graph_dir, physical_graph_path))
         output_dir_mk = output_dir.replace('greed', 'MK_greed_greed_with_geq_cr')
 
         start_time = time.time()
@@ -317,7 +306,10 @@ class Greed(BasePartitioner):
 
         self.write_results(join(output_dir_mk.format('weighted/'), graph_file), join(physical_graph_dir, physical_graph_path), partition, weighted_graph, physical_graph, start_time)
 
-    def do_greed(self, G: nx.Graph, PG: nx.Graph, partition: list[int] | None) -> list[int] | None:
+    def do_greed(self, G: nx.Graph, PG: nx.Graph, partition: list[int] | None, cr: int | None = None) -> list[int] | None:
+        if cr is not None:
+            self.CUT_RATIO = cr
+
         print('initial partition: ', partition)
         print('f for initial partition: ', self.f(G, PG, partition))
         print('cut_ratio for initial partition: ', calc_cut_ratio(G, partition))
@@ -340,8 +332,8 @@ class Greed(BasePartitioner):
         print('do_mk_with_geq_cr')
 
         output_dir = output_dir.replace('results', 'results1')
-        weighted_graph = input_networkx_graph_from_file(join(input_dir, graph_file))
-        physical_graph = input_networkx_graph_from_file(join(physical_graph_dir, physical_graph_path))
+        weighted_graph = input_graph(join(input_dir, graph_file))
+        physical_graph = input_graph(join(physical_graph_dir, physical_graph_path))
         output_dir_mk = output_dir.replace('greed', 'greed_from_mk_weighted')
 
         print('from mk weighted')
@@ -358,7 +350,7 @@ class Greed(BasePartitioner):
                 if not isfile(mk_path) or not isfile(mk_data_path):
                     continue
 
-                mk_graph_weighted = input_networkx_graph_from_file(mk_path)
+                mk_graph_weighted = input_graph(mk_path)
 
                 self.CUT_RATIO = 1
 
@@ -412,13 +404,8 @@ class Greed(BasePartitioner):
         print('do_simple_part')
 
         output_dir = output_dir.replace('results', 'results2')
-        weighted_graph: nx.Graph
-        if 'gen_data' in input_dir:
-            weighted_graph, _, _ = input_generated_graph_and_processors_from_file(join(input_dir, graph_file))
-        else:
-            weighted_graph = input_networkx_graph_from_file(join(input_dir, graph_file))
-        # weighted_graph = input_networkx_graph_from_file(join(input_dir, graph_file))
-        physical_graph = input_networkx_graph_from_file(join(physical_graph_dir, physical_graph_path))
+        weighted_graph: nx.Graph = input_graph(join(input_dir, graph_file))
+        physical_graph = input_graph(join(physical_graph_dir, physical_graph_path))
         output_dir_mk = output_dir.replace('greed', 'simple_part')
         start_time = time.time()
 
@@ -439,10 +426,10 @@ class Greed(BasePartitioner):
         print('write_metis_with_pg')
 
         output_dir = output_dir.replace('results', 'results2')
-        weighted_graph = input_networkx_graph_from_file(join(input_dir, graph_file))
+        weighted_graph = input_graph(join(input_dir, graph_file))
         unweighted_graph = input_networkx_unweighted_graph_from_file(join(input_dir, graph_file))
 
-        physical_graph = input_networkx_graph_from_file(join(physical_graph_dir, physical_graph_path))
+        physical_graph = input_graph(join(physical_graph_dir, physical_graph_path))
         output_dir_mk = output_dir.replace('greed', 'metis_with_pg')
 
         start_time = time.time()
@@ -452,6 +439,19 @@ class Greed(BasePartitioner):
         start_time = time.time()
         unweighted_partition = self.do_metis_with_pg(unweighted_graph, physical_graph)
         self.write_results(join(output_dir_mk.format('unweighted/'), graph_file), join(physical_graph_dir, physical_graph_path), unweighted_partition, weighted_graph, physical_graph, start_time)
+
+    def run(self, graph: nx.Graph, physical_graph: nx.Graph, cr: int | None = None) -> list[int] | None:
+        if cr is not None:
+            self.CUT_RATIO = cr
+
+        initial_weighted_partition = self.do_metis_with_pg(graph, physical_graph)
+        # weights = [0] * len(physical_graph)
+        # for i in range(len(initial_weighted_partition)):
+        #     weights[initial_weighted_partition[i]] += graph.nodes[i]['weight']
+        # print('initial_weighted_partition:', weights)
+        partition = self.postprocessing_phase(graph, physical_graph, initial_weighted_partition)
+        
+        return partition
 
     def research(self) -> None:
         graph_dirs = [
@@ -525,11 +525,7 @@ class Greed(BasePartitioner):
 
                                 for cr in cr_list:
                                     self.CUT_RATIO = cr
-                                    weighted_graph: nx.Graph
-                                    if 'gen_data' in input_dir:
-                                        weighted_graph, _, _ = input_generated_graph_and_processors_from_file(join(input_dir, graph_file))
-                                    else:
-                                        weighted_graph = input_networkx_graph_from_file(join(input_dir, graph_file))
+                                    weighted_graph: nx.Graph = input_graph(join(input_dir, graph_file))
 
                                     # if len(weighted_graph.nodes) > 100:
                                         # continue
@@ -538,7 +534,7 @@ class Greed(BasePartitioner):
                                         continue
 
                                     # unweighted_graph = input_networkx_unweighted_graph_from_file(join(input_dir, graph_file))
-                                    physical_graph = input_networkx_graph_from_file(join(physical_graph_dir, physical_graph_path))
+                                    physical_graph = input_graph(join(physical_graph_dir, physical_graph_path))
                                     # weighted
                                     start_time = time.time()
                                     initial_weighted_partition = self.do_metis_with_pg(weighted_graph, physical_graph)
