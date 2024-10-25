@@ -1,9 +1,7 @@
-from helpers import input_graph, input_networkx_unweighted_graph_from_file, calc_edgecut, calc_cut_ratio, do_unpack_mk, unpack_mk
+from helpers import calc_edgecut, calc_cut_ratio
 
-from os import listdir, makedirs
-from os.path import isfile, join
-
-from time import sleep
+from os import makedirs
+from os.path import isfile
 
 import networkx as nx
 import metis
@@ -174,8 +172,6 @@ class BasePartitioner:
         if check_cache:
             self.write_do_metis_cache(G, nparts, recursive, ans, steps_back)
 
-        # print(len(set(ans)))
-
         return ans
 
     def load_do_metis_with_pg_cache(self, G: nx.Graph, PG: nx.Graph, steps_back: int = 5) -> list[int] | None:
@@ -210,7 +206,7 @@ class BasePartitioner:
             else:
                 file.write('None')
 
-    def do_metis_with_pg(self, G: nx.Graph | None, PG: nx.Graph | None, check_cache: bool = True, steps_back: int = 5) -> list[int] | None:
+    def do_metis_with_pg(self, G: nx.Graph | None, PG: nx.Graph | None, check_cache: bool = True, steps_back: int = 7) -> list[int] | None:
         if check_cache:
             partition = self.load_do_metis_with_pg_cache(G, PG, steps_back=steps_back)
             if partition and len(partition) == len(G) and self.check_cut_ratio(G, partition):

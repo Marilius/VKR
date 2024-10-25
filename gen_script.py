@@ -5,7 +5,7 @@ import subprocess
 
 p_list = [
     [3, 2], [3, 2] * 2, [3, 2] * 3, [3, 2] * 4, [3, 2] * 5,
-    [4, 1], [4, 1] * 2, [4, 1] * 3, [4, 1] * 4, [4, 1] * 5,
+    [1, 4], [1, 4] * 2, [1, 4] * 3, [1, 4] * 4, [1, 4] * 5,
     [5, 4, 3, 2], [5, 4, 3, 2] * 2, [5, 4, 3, 2] * 3, [5, 4, 3, 2] * 4, [5, 4, 3, 2] * 5, 
 ]
 
@@ -22,9 +22,10 @@ for p in p_list:
     for L in L_list:
         for N in N_list:
             for cr in cr_list:
-                command = f'poetry run python ./task_graph_generator.py -p {" ".join(map(str, p))} -L {L} -min_l {min_l} -max_l {max_l} -N {N} -cr {cr} -n_tries 10000'
+                command = f'poetry run python ./task_graph_generator.py -p {" ".join(map(str, p))} -L {L} -min_l {min_l} -max_l {max_l} -N {N} -cr {cr} -n_tries 100000'
                 # print(command)
                 subprocess.run(command.split())
+                print(command)
                 # subprocess.run(command)
 
 

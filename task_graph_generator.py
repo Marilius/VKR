@@ -61,11 +61,11 @@ for i in range(len(p)):
     while f:
         f = False
         n = n0
-        time_left = L
+        time_left = L * p[i]
         start_time = 0
         while time_left > 0:
             curr_time = random.randint(min_l, max_l)
-            end_time = min(start_time + curr_time, L)
+            end_time = min(start_time + curr_time, L * p[i])
             curr_time = end_time - start_time
             
             if n_tries <= 0:
@@ -83,6 +83,7 @@ for i in range(len(p)):
             start_time += curr_time
             time_left -= curr_time
             assert time_left >= 0
+            assert min_l <= curr_time <= max_l
 
     n0 = n
 
@@ -97,13 +98,13 @@ assert len(exact_partition) == len(list(itertools.chain.from_iterable(jobs)))
 for i in range(len(p)):
     for job in jobs[i]:
         assert min_l <= job.length <= max_l
-        assert 0 <= job.start_time < job.end_time <= L
+        assert 0 <= job.start_time < job.end_time <= L * p[i]
 
-for proc_jobs in jobs:
+for i, proc_jobs in enumerate(jobs):
     weight = 0
     for job in proc_jobs:
         weight += job.length
-    assert weight == L, f'{weight} != {L}'
+    assert weight == L * p[i], f'{weight} != {L * p[i]}'
 
 # добавление не секущих рёбер
 n = N_e - N_s
@@ -144,9 +145,9 @@ while n:
     first_job = random.choice(jobs[proc_first]) 
     second_job = random.choice(jobs[proc_second])
     
-    if first_job.end_time <= second_job.start_time:
+    if first_job.end_time / p[proc_first] <= second_job.start_time / p[proc_second]:
         first, second = first_job.id, second_job.id
-    elif second_job.end_time <= first_job.start_time:
+    elif second_job.end_time / p[proc_second] <= first_job.start_time / p[proc_first]:
         first, second = second_job.id, first_job.id
     else:
         continue
@@ -190,8 +191,8 @@ if shuffle:
                 weights[proc] += job.length
                 fact_jobs[proc].append(job.id)
                 break
-    for w in weights:
-        assert w == L
+    for i, w in enumerate(weights):
+        assert w == L * p[i]
 
 # запись в файл
 GRAPH_NAME_FORMAT = './data/gen_data/{p}_{L}_{min_l}_{max_l}_{N}_{cr}_{shuffle}.graph'
@@ -224,12 +225,12 @@ with open(name, 'w+') as f:
 
     lines = []
 
-    for proc_weight, proc_jobs in zip(p, jobs):
+    for proc_jobs in jobs:
         for job in proc_jobs:
             lines.append(
                 (
                     job.id,
-                    proc_weight * job.length,
+                    job.length,
                     ' '.join(map(str, sorted(edge_list[job.id])))
                 )
             )
@@ -283,12 +284,12 @@ if WRITE_UNSHUFFLED and shuffle:
 
         lines = []
 
-        for proc_weight, proc_jobs in zip(p, initial_jobs):
+        for proc_jobs in initial_jobs:
             for job in proc_jobs:
                 lines.append(
                     (
                         job.id,
-                        proc_weight * job.length,
+                        job.length,
                         ' '.join(map(str, sorted(initial_edge_list[job.id])))
                     )
                 )
