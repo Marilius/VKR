@@ -34,8 +34,6 @@ parser.add_argument('-max_l', type=int, help='Максимальная длит�
 parser.add_argument('-N', type=float, help='Число рёбер на вершину.')
 parser.add_argument('-cr', type=float, help='Доля секущих рёбер.')
 parser.add_argument('-n_tries', type=int, help='Число попыток нарандомить.', default=100)
-# parser.add_argument('-N_e', type=int, help='Число рёбер.')
-# parser.add_argument('-N_s', type=int, help='Число секущих рёбер.')
 parser.add_argument('--shuffle_off', dest='shuffle', action='store_false', help='Перемешивание номеров вершин.', default=True)
 
 WRITE_UNSHUFFLED = True
@@ -49,8 +47,6 @@ max_l: int = args.max_l
 N: float = args.N
 cr: float = args.cr
 n_tries: int = args.n_tries
-# N_e: int = args.N_e
-# N_s: int = args.N_s
 shuffle: bool = args.shuffle
 
 # создание вершин графа
@@ -92,7 +88,6 @@ N_e: int = int(n0 * N)
 N_s: int = int(N_e * cr)
 
 exact_partition: list[int] = list(itertools.chain.from_iterable([[proc] * len(job_list) for proc, job_list in enumerate(jobs)]))
-# print(exact_partition)
 assert len(exact_partition) == len(list(itertools.chain.from_iterable(jobs)))
 
 for i in range(len(p)):
@@ -237,7 +232,6 @@ with open(name, 'w+') as f:
 
     lines.sort(key=lambda x: x[0])
     for line in lines:
-        # print(line)
         line = dict(zip(('id', 'weight', 'child_list'), line))
         f.write(NODE_FORMAT.format(**line))
 print(name)
@@ -296,7 +290,6 @@ if WRITE_UNSHUFFLED and shuffle:
 
         lines.sort(key=lambda x: x[0])
         for line in lines:
-            # print(line)
             line = dict(zip(('id', 'weight', 'child_list'), line))
             f.write(NODE_FORMAT.format(**line))
 

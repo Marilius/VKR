@@ -1,1 +1,1 @@
-from .main import Greed
+from .main import GreedPartitioner

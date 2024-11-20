@@ -1,4 +1,4 @@
-from .main import MK
+from .main import MKPartitioner
 
 
 graph_dirs = [
@@ -9,9 +9,9 @@ graph_dirs = [
     './data/gen_data',
 ]
 
-mk = MK(data_dirs=graph_dirs)
+mk = MKPartitioner()
 
-mk.research()
+# mk.research()
 
 # g_path = './data/sausages/dagP38.txt'
 # G_weighted = input_networkx_graph_from_file(g_path)

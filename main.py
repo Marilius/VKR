@@ -1,5 +1,5 @@
 # # gen test
-from greed import Greed
+from greed import GreedPartitioner
 from helpers import input_generated_graph_and_processors_from_file, input_generated_graph_partition, input_graph
 import metis
 
