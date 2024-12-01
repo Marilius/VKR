@@ -353,6 +353,7 @@ class MKPartitioner(GreedPartitioner):
         graph_file: str,
         physical_graph_dir: str,
         physical_graph_path: str,
+        cr_max: float,
         check_cache: bool = True,
         steps_back: int = 6,
     ) -> None:
@@ -363,9 +364,9 @@ class MKPartitioner(GreedPartitioner):
         output_dir_mk = output_dir.replace('greed', 'MK_greed_greed_with_geq_cr')
 
         start_time = time.time()
-        partition = self.MK_greed_greed_with_geq_cr(weighted_graph, physical_graph, check_cache=check_cache, steps_back=steps_back)
+        partition = self.MK_greed_greed_with_geq_cr(weighted_graph, physical_graph, cr_max, check_cache=check_cache, steps_back=steps_back)
 
-        self.write_results(join(output_dir_mk.format('weighted/'), graph_file), join(physical_graph_dir, physical_graph_path), partition, weighted_graph, physical_graph, start_time)
+        self.write_results(join(output_dir_mk.format('weighted/'), graph_file), join(physical_graph_dir, physical_graph_path), partition, weighted_graph, physical_graph, cr_max, start_time)
 
     def do_weighted_mk_with_geq_cr(
         self,

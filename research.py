@@ -51,9 +51,9 @@ graphs = [
 graphs = [graph for graph in listdir('./data/gen_data') if 'partition' not in graph]
 
 # cr_list_little = [0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.2]
-cr_list_little = [0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.18, 0.2]
-cr_list_big = [0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1]
-cr_list = cr_list_little + cr_list_big
+# cr_list_little = [0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.18, 0.2]
+# cr_list_big = [0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1]
+# cr_list = cr_list_little + cr_list_big
 # cr_list =  cr_list_big
 cr_list = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.8, 0.9, 1]
 # cr_list = [0.1, 0.15]
@@ -64,25 +64,16 @@ for input_dir, output_dir in graph_dirs:
             for physical_graph_dir in physical_graph_dirs:
                 for physical_graph_path in listdir(physical_graph_dir):
                     if isfile(join(physical_graph_dir, physical_graph_path)): # and '1_4x2.txt' in physical_graph_path:
-                        graph_name = physical_graph_path.split('.')[0]
-                        graph_name = graph_name.split('x')
-                        # graph_name = (graph_name[0] + '_') * int(graph_name[1])
-                        # graph_name = graph_name.strip('_')
-                        
-                        # if '1_4_1_4_4000_10_100_2.0_0.1_True.graph' != graph_file:
-                            # continue
-                        # if '1_4x2' not in physical_graph_path:
-                            # continue
-                        # if '1_4x2' not in physical_graph_path or '4000' not in graph_file or '10_100' not in graph_file or '2.0' not in graph_file or '0.1' not in graph_file:
-                            # continue
-                        # if 'True' not in graph_file:
-                            # continue
-                        
-                        if '5_4_3_2_5_4_3_2_2000_10_100_1.5_0.1_True.graph' != graph_file:
-                            continue    
-                        
-                        if 'gen_data' in input_dir and graph_file.count(graph_name[0]) != int(graph_name[1]):
-                            continue
+                        if 'gen_data' in input_dir:
+                            try:
+                                pg = physical_graph_path.removesuffix('.txt').split('x')
+                                pg_prefix = (pg[0] + '_') * int(pg[1])
+                                
+                                L, min_l, max_l, N, cr_gen, shuffle = graph_file.removesuffix('.graph').removeprefix(pg_prefix).split('_')
+                                
+                                L, min_l, max_l, N, cr_gen = int(L), int(min_l), int(max_l), float(N), float(cr_gen)
+                            except:
+                                continue
 
                         for cr in cr_list:
                             weighted_graph: nx.Graph = input_graph(join(input_dir, graph_file))
@@ -169,7 +160,7 @@ for input_dir, output_dir in graph_dirs:
                             
                             mk_partitioner.do_MK_greed_greed(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path, cr, check_cache=True, steps_back=6)
                             
-                            # self.do_MK_greed_greed_with_geq_cr(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path, check_cache=True, steps_back=6)
+                            # mk_partitioner.do_MK_greed_greed_with_geq_cr(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path, cr, check_cache=True, steps_back=6)
 
-                            # self.do_simple_part(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path)
+                            greed_partitioner.do_simple_part(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path, cr)
                             # self.write_metis_with_pg(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path)

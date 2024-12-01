@@ -53,7 +53,8 @@ class GreedPartitioner(BasePartitioner):
             '\n',
         ]
 
-        with open(path.replace('.txt', '.time'), 'a+') as file:
+        time_path = path.replace('.txt', '.time').replace('.graph', '.time')
+        with open(time_path, 'a+') as file:
             file.write(' '.join(map(str, line2write)))
 
     def postprocessing_phase(self, G: nx.Graph | None, PG: nx.Graph, partition: list[int] | None, cr_max: float) -> list[int] | None:
@@ -161,6 +162,7 @@ class GreedPartitioner(BasePartitioner):
         graph_file: str,
         physical_graph_dir: str,
         physical_graph_path: str,
+        cr_max: float,
     ) -> None:
         output_dir = output_dir.replace('results', 'results2')
         weighted_graph: nx.Graph = input_graph(join(input_dir, graph_file))
@@ -170,7 +172,7 @@ class GreedPartitioner(BasePartitioner):
 
         partition = self.simple_part(weighted_graph, physical_graph)
 
-        self.write_results(join(output_dir_mk.format('weighted/'), graph_file), join(physical_graph_dir, physical_graph_path), partition, weighted_graph, physical_graph, start_time)
+        self.write_results(join(output_dir_mk.format('weighted/'), graph_file), join(physical_graph_dir, physical_graph_path), partition, weighted_graph, physical_graph, cr_max, start_time)
 
     def write_metis_with_pg(
         self,
