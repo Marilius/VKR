@@ -197,6 +197,25 @@ class GreedPartitioner(BasePartitioner):
         unweighted_partition = self.do_metis_with_pg(unweighted_graph, physical_graph)
         self.write_results(join(output_dir_mk.format('unweighted/'), graph_file), join(physical_graph_dir, physical_graph_path), unweighted_partition, weighted_graph, physical_graph, start_time)
 
+    def run_from_paths(
+        self,
+        input_dir: str,
+        output_dir: str,
+        graph_file: str,
+        physical_graph_dir: str,
+        physical_graph_path: str,
+        cr_max: float,
+    ) -> None:
+        weighted_graph: nx.Graph = input_graph(join(input_dir, graph_file))
+        physical_graph: nx.Graph = input_graph(join(physical_graph_dir, physical_graph_path))
+
+        start_time = time.time()
+        initial_weighted_partition = self.do_metis_with_pg(weighted_graph, physical_graph, cr_max=cr_max)
+        self.write_results(join(output_dir.format('weighted/'), graph_file).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_weighted_partition, weighted_graph, physical_graph, cr_max, start_time)
+        start_time = time.time()
+        weighted_partition = self.do_greed(weighted_graph, physical_graph, initial_weighted_partition, cr_max)
+        self.write_results(join(output_dir.format('weighted/'), graph_file), join(physical_graph_dir, physical_graph_path), weighted_partition, weighted_graph, physical_graph, cr_max, start_time)
+
     def run(self, graph: nx.Graph, physical_graph: nx.Graph, cr_max: float) -> list[int] | None:
         initial_weighted_partition = self.do_metis_with_pg(graph, physical_graph, cr_max)
         

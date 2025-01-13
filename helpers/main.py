@@ -90,7 +90,6 @@ def input_generated_graph_and_processors_from_file(path: str) -> tuple[nx.Graph,
 
     with open(path, 'r') as f:
         p = list(map(int, f.readline().strip().split()))
-        print(p)
         L = int(f.readline())
         min_l, max_l = list(map(int, f.readline().strip().split()))
         N_e, N_s = list(map(int, f.readline().strip().split()))

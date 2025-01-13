@@ -10,6 +10,11 @@ from os.path import isfile, join
 
 import time
 
+from joblib import Parallel, delayed
+
+
+params: list[dict] = []
+params_light: list[dict] = []
 
 greed_partitioner: GreedPartitioner = GreedPartitioner()
 mk_partitioner: MKPartitioner = MKPartitioner()
@@ -78,21 +83,18 @@ for input_dir, output_dir in graph_dirs:
                         for cr in cr_list:
                             weighted_graph: nx.Graph = input_graph(join(input_dir, graph_file))
 
-                            # if len(weighted_graph.nodes) > 100:
-                                # continue
-
                             if list(sorted(list(weighted_graph.nodes))) != list(range(len(weighted_graph.nodes))):
                                 continue
 
                             # unweighted_graph = input_networkx_unweighted_graph_from_file(join(input_dir, graph_file))
-                            physical_graph = input_graph(join(physical_graph_dir, physical_graph_path))
-                            # weighted
-                            start_time = time.time()
-                            initial_weighted_partition = greed_partitioner.do_metis_with_pg(weighted_graph, physical_graph, cr_max=cr)
-                            greed_partitioner.write_results(join(output_dir.format('weighted/'), graph_file).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_weighted_partition, weighted_graph, physical_graph, cr, start_time)
-                            start_time = time.time()
-                            weighted_partition = greed_partitioner.do_greed(weighted_graph, physical_graph, initial_weighted_partition, cr)
-                            greed_partitioner.write_results(join(output_dir.format('weighted/'), graph_file), join(physical_graph_dir, physical_graph_path), weighted_partition, weighted_graph, physical_graph, cr, start_time)
+                            # physical_graph = input_graph(join(physical_graph_dir, physical_graph_path))
+                            # # weighted
+                            # start_time = time.time()
+                            # initial_weighted_partition = greed_partitioner.do_metis_with_pg(weighted_graph, physical_graph, cr_max=cr)
+                            # greed_partitioner.write_results(join(output_dir.format('weighted/'), graph_file).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_weighted_partition, weighted_graph, physical_graph, cr, start_time)
+                            # start_time = time.time()
+                            # weighted_partition = greed_partitioner.do_greed(weighted_graph, physical_graph, initial_weighted_partition, cr)
+                            # greed_partitioner.write_results(join(output_dir.format('weighted/'), graph_file), join(physical_graph_dir, physical_graph_path), weighted_partition, weighted_graph, physical_graph, cr, start_time)
 
                             # # unweighted
                             # start_time = time.time()
@@ -158,9 +160,38 @@ for input_dir, output_dir in graph_dirs:
 
                             # self.do_weighted_mk_with_geq_cr(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path, cr)
                             
-                            mk_partitioner.do_MK_greed_greed(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path, cr, check_cache=True, steps_back=6)
+                            # mk_partitioner.do_MK_greed_greed(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path, cr, check_cache=True, steps_back=6)
                             
                             # mk_partitioner.do_MK_greed_greed_with_geq_cr(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path, cr, check_cache=True, steps_back=6)
 
-                            greed_partitioner.do_simple_part(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path, cr)
-                            # self.write_metis_with_pg(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path)
+                            # greed_partitioner.do_simple_part(input_dir, output_dir, graph_file, physical_graph_dir, physical_graph_path, cr)
+                            # self.write_metis_with_pg(input_dir, output_dir, graph_file,   physical_graph_dir, physical_graph_path)
+                            
+                            params.append(
+                                {
+                                    'input_dir': input_dir,
+                                    'output_dir': output_dir,
+                                    'graph_file': graph_file,
+                                    'physical_graph_dir': physical_graph_dir,
+                                    'physical_graph_path': physical_graph_path,
+                                    'cr_max': cr, 
+                                    'check_cache': True, 
+                                    'steps_back': 6,
+                                }
+                            )
+                            
+                            params_light.append(
+                                {
+                                    'input_dir': input_dir,
+                                    'output_dir': output_dir,
+                                    'graph_file': graph_file,
+                                    'physical_graph_dir': physical_graph_dir,
+                                    'physical_graph_path': physical_graph_path,
+                                    'cr_max': cr, 
+                                }
+                            )
+                            
+# Parallel(n_jobs=10)(delayed(greed_partitioner.do_simple_part)(**param) for param in params_light)  # done
+# Parallel(n_jobs=10)(delayed(greed_partitioner.run_from_paths)(**param) for param in params_light)  # done
+Parallel(n_jobs=-1)(delayed(mk_partitioner.do_MK_greed_greed)(**param) for param in params)
+# Parallel(n_jobs=10)(delayed(mk_partitioner.do_MK_greed_greed_with_geq_cr)(**param) for param in params)
