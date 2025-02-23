@@ -3,8 +3,13 @@ mk_cache
 mk_cache/*
 cache
 cache/*
+pics
+pics/*
+pics_total
+pics_total/*
 graphs_rand.rar
 graphs_rand.rar:Zone.identifier
+pics.zip
 
 
 

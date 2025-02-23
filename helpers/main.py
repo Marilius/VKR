@@ -39,7 +39,6 @@ def input_networkx_graph_from_file(path: str) -> nx.Graph:
 
     return G
 
-
 def input_networkx_unweighted_graph_from_file(path: str) -> nx.Graph:
     G = nx.Graph()
 
@@ -65,7 +64,6 @@ def input_networkx_unweighted_graph_from_file(path: str) -> nx.Graph:
     G.graph['graph_name'] = mk + graph_name
     
     return G
-
 
 def input_generated_graph_partition(path: str) -> list[int]:
     if not isfile(path):
@@ -109,18 +107,14 @@ def input_generated_graph_and_processors_from_file(path: str) -> tuple[nx.Graph,
 
     return G, p, params
 
-
 def calc_edgecut(G: nx.Graph, partition: list[int]) -> int:
-    edgecut = 0
-    # print(partition)
-    # print(G.nodes(data=True))
+    edgecut: int = 0
     for edge in G.edges:
         node1, node2 = edge
         if partition[node1] != partition[node2]:
             edgecut += 1
 
     return edgecut
-
 
 def calc_cut_ratio(G: nx.Graph | None, partition: list[int] | None) -> float | None:
     if G is None or partition is None:
@@ -130,7 +124,6 @@ def calc_cut_ratio(G: nx.Graph | None, partition: list[int] | None) -> float | N
         return 0
 
     return calc_edgecut(G, partition) / len(G.edges)
-
 
 def unpack_mk(mk_partition: list[int], mk_data: list[int]) -> list[int]:
     ans = mk_data.copy()
@@ -144,7 +137,6 @@ def unpack_mk(mk_partition: list[int], mk_data: list[int]) -> list[int]:
 
     return ans
 
-
 def do_unpack_mk(mk_partition: list[int], mk_data_path: str) -> list[int]:
     while not isfile(mk_data_path):
         print('waiting for: ', mk_data_path)
@@ -155,3 +147,21 @@ def do_unpack_mk(mk_partition: list[int], mk_data_path: str) -> list[int]:
         mk_data = list(map(int, line.split()))
 
         return unpack_mk(mk_partition, mk_data)
+
+def fix_rand_graph_file(path: str) -> None:
+    graph: nx.Graph = input_graph(path)
+    
+    with open(path, 'r') as file:
+        filedata = file.read()
+        for old_id, new_id in zip(list(sorted(list(graph.nodes))), list(range(len(graph.nodes)))):
+            filedata = filedata.replace(f'\t{old_id}\n', f'\t{new_id}\n')
+            filedata = filedata.replace(f'\t{old_id}\t', f'\t{new_id}\t')
+            filedata = filedata.replace(f'\n{old_id}\t', f'\n{new_id}\t')
+            filedata = filedata.replace(f'\n{old_id}\n', f'\n{new_id}\n')
+
+    # Write the file out again
+    with open(path, 'w') as file:
+        file.write(filedata)
+    
+    graph: nx.Graph = input_graph(path)
+    assert list(sorted(list(graph.nodes))) == list(range(len(graph.nodes)))

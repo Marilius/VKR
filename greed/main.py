@@ -35,6 +35,7 @@ class GreedPartitioner(BasePartitioner):
         ]
 
         assert partition is None or len(set(partition)) <= len(PG.nodes)
+        assert partition is None or len(partition) == len(G.nodes)
 
         makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
 
@@ -144,6 +145,10 @@ class GreedPartitioner(BasePartitioner):
         return partition
 
     def simple_part(self, G: nx.Graph, PG: nx.Graph) -> list[int]:
+        """
+        Определяет все работы на самый быстрый процессор
+        """
+
         proc_fastest: int = 0
         speed_max: int = PG.nodes[proc_fastest]['weight']
 
@@ -205,19 +210,21 @@ class GreedPartitioner(BasePartitioner):
         physical_graph_dir: str,
         physical_graph_path: str,
         cr_max: float,
+        check_cache: bool,
+        seed: int | None,
     ) -> None:
         weighted_graph: nx.Graph = input_graph(join(input_dir, graph_file))
         physical_graph: nx.Graph = input_graph(join(physical_graph_dir, physical_graph_path))
 
         start_time = time.time()
-        initial_weighted_partition = self.do_metis_with_pg(weighted_graph, physical_graph, cr_max=cr_max)
+        initial_weighted_partition = self.do_metis_with_pg(weighted_graph, physical_graph, cr_max=cr_max, check_cache=check_cache, seed=seed)
         self.write_results(join(output_dir.format('weighted/'), graph_file).replace('greed', 'metis'), join(physical_graph_dir, physical_graph_path), initial_weighted_partition, weighted_graph, physical_graph, cr_max, start_time)
         start_time = time.time()
         weighted_partition = self.do_greed(weighted_graph, physical_graph, initial_weighted_partition, cr_max)
         self.write_results(join(output_dir.format('weighted/'), graph_file), join(physical_graph_dir, physical_graph_path), weighted_partition, weighted_graph, physical_graph, cr_max, start_time)
 
     def run(self, graph: nx.Graph, physical_graph: nx.Graph, cr_max: float) -> list[int] | None:
-        initial_weighted_partition = self.do_metis_with_pg(graph, physical_graph, cr_max)
+        initial_weighted_partition = self.do_metis_with_pg(graph, physical_graph, cr_max, check_cache)
         
         partition = self.postprocessing_phase(graph, physical_graph, initial_weighted_partition, cr_max)
 

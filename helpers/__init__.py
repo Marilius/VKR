@@ -6,4 +6,5 @@ from .main import (
     input_graph,
     input_generated_graph_and_processors_from_file,
     input_generated_graph_partition,
+    fix_rand_graph_file,
 )
