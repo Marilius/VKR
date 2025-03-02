@@ -23,8 +23,8 @@ graph_dirs = [
     # (r'./data/sausages', r'./results/greed/{}sausages'),
     # (r'./data/gen_data', r'./results/greed/{}gen_data'),
     
-    # (r'./data/layered_all', r'./results/greed/{}layered_all'),
-    (r'./data/rand_first100', r'./results/greed/{}rand_first100'),
+    (r'./data/layered_all', r'./results/greed/{}layered_all'),
+    # (r'./data/rand_first100', r'./results/greed/{}rand_first100'),
     # (r'./data/triangle_new', r'./results/greed/{}triangle_new'),
 ]
 
@@ -35,12 +35,14 @@ physical_graph_dirs = [
 cr_list = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.8, 0.9, 1]
 
 for input_dir, output_dir in graph_dirs:
-    for graph_file in listdir(input_dir):
+    graph_names = sorted(listdir(input_dir), key=lambda x: len(input_graph(join(input_dir, x)).nodes))
+    
+    for graph_file in graph_names:
         graph_path: str = join(input_dir, graph_file)
-        if graph_file in listdir('results2/MK_greed_greed_weighted/weighted/rand_first100'):
-            continue
+        # if graph_file in listdir('results2/MK_greed_greed_weighted/weighted/rand_first100'):
+            # continue
         
-        # if 'dag1.txt' not in graph_file:
+        # if 'triadag1' in graph_file:
             # continue
         
         if isfile(graph_path) and 'partition' not in graph_file:
@@ -84,8 +86,8 @@ for input_dir, output_dir in graph_dirs:
 
 # print(params)
 
-Parallel(n_jobs=-1)(delayed(greed_partitioner.do_simple_part)(**param) for param in [{key: value for key, value in d.items() if key not in ['seed', 'check_cache', 'steps_back']} for d in params])
-Parallel(n_jobs=-1)(delayed(greed_partitioner.run_from_paths)(**param) for param in [{key: value for key, value in d.items() if key not in ['steps_back']} for d in params])
+# Parallel(n_jobs=-1)(delayed(greed_partitioner.do_simple_part)(**param) for param in [{key: value for key, value in d.items() if key not in ['seed', 'check_cache', 'steps_back']} for d in params])
+# Parallel(n_jobs=-1)(delayed(greed_partitioner.run_from_paths)(**param) for param in [{key: value for key, value in d.items() if key not in ['steps_back']} for d in params])
 Parallel(n_jobs=-1)(delayed(mk_partitioner.do_MK_greed_greed)(**param) for param in params)
 
 # params = [{'input_dir': './data/rand_first100', 

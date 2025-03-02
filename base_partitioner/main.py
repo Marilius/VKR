@@ -51,8 +51,6 @@ class BasePartitioner:
         partition = [0] * len(G.nodes)
 
         for new_i, i in enumerate(list(G.nodes)):
-            print('new_i, i', new_i, i)
-            print(len(partition2parse), len(G.nodes))
             partition[i] = partition2parse[new_i]
 
         for new_i, i in enumerate(sorted(list(set(partition)))):
@@ -140,7 +138,6 @@ class BasePartitioner:
         ufactor = 1
 
         (_, partition) = self.metis_part(G, nparts, ufactor, check_cache, seed, recursive)
-        print('kikikiki', len(G.nodes), len(partition))
 
         while not self.check_cut_ratio(G, partition, cr_max):
             ufactor *= 2
@@ -150,10 +147,6 @@ class BasePartitioner:
 
             (_, partition) = self.metis_part(G, nparts, ufactor, check_cache, seed, recursive)
 
-        # print(len(set(partition)))
-        # print('kakakakak', len(G.nodes), len(partition))
-        # print('nparts', nparts)
-
         ans = partition.copy()
         for _ in range(steps_back):
             ufactor *= 0.75
@@ -161,17 +154,13 @@ class BasePartitioner:
             if ufactor < 1:
                 break
 
-            print(f'len(partition): {len(partition)}, len(G.nodes): {len(G.nodes)}', ufactor)
             (_, partition) = self.metis_part(G, nparts, ufactor, check_cache, seed, recursive)
             assert len(partition) == len(G.nodes), (f'len(partition): {len(partition)}, len(G.nodes): {len(G.nodes)}', ufactor)
             if self.check_cut_ratio(G, partition, cr_max):
                 ans = partition.copy()
 
-        # print('kukukukuk', len(G.nodes), len(partition))
         if check_cache:
             self.write_do_metis_cache(G, nparts, recursive, cr_max, ans, steps_back)
-
-        # print('ans', len(G.nodes), len(ans))
 
         return ans
 
