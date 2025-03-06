@@ -164,6 +164,18 @@ class GreedPartitioner(BasePartitioner):
         return partition
 
     def do_greed(self, G: nx.Graph, PG: nx.Graph, partition: list[int] | None, cr_max: float) -> list[int] | None:
+        """
+        Run the greedy partitioning algorithm on the given graph and physical graph.
+
+        Args:
+            G (nx.Graph): The graph to be partitioned.
+            PG (nx.Graph): The physical graph.
+            partition (list[int] | None): An initial partition assignment for each node.
+            cr_max (float): The maximum allowed cut ratio.
+
+        Returns:
+            list[int] | None: The partition assignment for each node if the cut ratio is satisfied, otherwise None.
+        """
         if partition is None:
             return None
 

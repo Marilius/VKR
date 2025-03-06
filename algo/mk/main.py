@@ -356,10 +356,14 @@ class MKPartitioner(GreedPartitioner):
 
     def MK_greed_greed(self, G: nx.Graph, PG: nx.Graph, cr_max: float, check_cache: bool, seed: int | None, steps_back: int = 6, ) -> list[int] | None:
         """
-        Runs the MK partitioning algorithm on a given graph with a given number of parts and maximum allowed cut ratio, then
-        uses the result as a starting point for a greedy partitioning algorithm, and finally returns the best partition found.
+        Determines the maximum number of parts into which a graph can be divided so that the constraint on cut ratio is respected.
+        
+        then for each i from 1 to this number:
+            The graph is partitioned into i parts without cut ratio restrictions and its vertices are grouped then assigns groups of tasks to processors according to their performance.
+            Coarsened graph partition is refined by greed algorithm without cut ratio restrictions.
+            Coarsened graph and it's partition is being unpacked and further refined by greed algorithm.
 
-        TODO TODO
+        The best graph partition found is being returned.        
 
         Args:
             G (nx.Graph): The graph to be partitioned.

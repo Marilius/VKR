@@ -33,8 +33,6 @@ for input_dir, output_dir in graph_dirs:
     graph_names = sorted(listdir(input_dir), key=lambda x: len(input_graph(join(input_dir, x)).nodes))
     for graph_file in graph_names:
         graph_path: str = join(input_dir, graph_file)
-        if 'dag69.txt' != graph_file:
-            continue
         
         if isfile(graph_path) and 'partition' not in graph_file:
             print(f'{graph_path}/{graph_file}')
