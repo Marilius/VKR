@@ -31,8 +31,10 @@ cr_list = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7
 
 for input_dir, output_dir in graph_dirs:
     graph_names = sorted(listdir(input_dir), key=lambda x: len(input_graph(join(input_dir, x)).nodes))
-    for graph_file in graph_names[:1]:
+    for graph_file in graph_names:
         graph_path: str = join(input_dir, graph_file)
+        if 'dag69.txt' != graph_file:
+            continue
         
         if isfile(graph_path) and 'partition' not in graph_file:
             print(f'{graph_path}/{graph_file}')
@@ -74,10 +76,10 @@ for input_dir, output_dir in graph_dirs:
                             )
 
 # run simple part
-Parallel(n_jobs=-1)(delayed(greed_partitioner.do_simple_part)(**param) for param in [{key: value for key, value in d.items() if key not in ['seed', 'check_cache', 'steps_back']} for d in params])
+# Parallel(n_jobs=-1)(delayed(greed_partitioner.do_simple_part)(**param) for param in [{key: value for key, value in d.items() if key not in ['seed', 'check_cache', 'steps_back']} for d in params])
 
 # run greed algo
-Parallel(n_jobs=-1)(delayed(greed_partitioner.run_from_paths)(**param) for param in [{key: value for key, value in d.items() if key not in ['steps_back']} for d in params])
+# Parallel(n_jobs=-1)(delayed(greed_partitioner.run_from_paths)(**param) for param in [{key: value for key, value in d.items() if key not in ['steps_back']} for d in params])
 
 # run mk algo
 Parallel(n_jobs=-1)(delayed(mk_partitioner.do_MK_greed_greed)(**param) for param in params)
