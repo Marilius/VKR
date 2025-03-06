@@ -26,10 +26,7 @@ for p in p_list:
         for N in N_list:
             for cr in cr_list:
                 command = f'poetry run python ./task_graph_generator.py -p {" ".join(map(str, p))} -L {L} -min_l {min_l} -max_l {max_l} -N {N} -cr {cr} -n_tries 100000'
-                # print(command)
                 subprocess.run(command.split())
                 print(command)
-                # subprocess.run(command)
-
 
 # Run the called script with arguments

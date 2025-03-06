@@ -4,7 +4,18 @@ from os.path import isfile
 
 from time import sleep
 
+
 def input_graph(path: str) -> nx.Graph:
+    """
+    Reads a graph from a file in either the format used by the task_graph_generator.py script or the
+    "node_id node_weight child1 child2 ..." format. The graph is read into a NetworkX graph object.
+
+    Args:
+        path (str): path to the file containing the graph
+
+    Returns:
+        nx.Graph: the read graph
+    """
     if 'gen_data' in path:
         graph, _, _ = input_generated_graph_and_processors_from_file(path)
     else:
@@ -13,6 +24,15 @@ def input_graph(path: str) -> nx.Graph:
     return graph
 
 def input_networkx_graph_from_file(path: str) -> nx.Graph:
+    """
+    Reads a graph from a file in the "node_id node_weight child1 child2 ..." format. The graph is read into a NetworkX graph object.
+
+    Args:
+        path (str): path to the file containing the graph
+
+    Returns:
+        nx.Graph: the read graph
+    """
     G = nx.Graph()
 
     if not isfile(path):
@@ -40,6 +60,17 @@ def input_networkx_graph_from_file(path: str) -> nx.Graph:
     return G
 
 def input_networkx_unweighted_graph_from_file(path: str) -> nx.Graph:
+    """
+    Reads an unweighted graph from a file in format
+    "node_id node_weight child1 child2 ...". 
+    The graph is read into a NetworkX graph object, and the node weights are set to 1.
+
+    Args:
+        path (str): path to the file containing the graph
+
+    Returns:
+        nx.Graph: the read graph
+    """
     G = nx.Graph()
 
     if not isfile(path):
@@ -66,6 +97,18 @@ def input_networkx_unweighted_graph_from_file(path: str) -> nx.Graph:
     return G
 
 def input_generated_graph_partition(path: str) -> list[int]:
+    """
+    Reads a partition from a file created by task_graph_generator.py.
+
+    Args:
+        path (str): The path to the file containing the partition.
+
+    Returns:
+        list[int]: The partition read from the file.
+
+    Raises:
+        FileNotFoundError: If the file specified by path does not exist.
+    """
     if not isfile(path):
         raise FileNotFoundError(f'File {path} not found')
 
@@ -78,10 +121,23 @@ def input_generated_graph_partition(path: str) -> list[int]:
 
 
 def input_generated_graph_and_processors_from_file(path: str) -> tuple[nx.Graph, list[int], dict[str, int|list[int]]]:
+    """
+    Reads a graph and processor details from a file created by task_graph_generator.py.
+
+    Args:
+        path (str): The path to the file containing the graph and processor information.
+
+    Returns:
+        tuple[nx.Graph, list[int], dict[str, int|list[int]]]: A tuple containing the graph as a 
+        NetworkX object, a list of processors, and a dictionary of parameters including 'p', 'L', 
+        'min_l', 'max_l', 'N_e', and 'N_s'.
+
+    Raises:
+        FileNotFoundError: If the file specified by path does not exist.
+    """
+
     if not isfile(path):
         raise FileNotFoundError(f'File {path} not found')
-        
-    # FORMAT = "{p}\n{L}\n{min_l} {max_l}\n{N_e} {N_s}\n"
 
     G = nx.Graph()
     params: dict[str, int|list[int]] = {}
@@ -108,6 +164,16 @@ def input_generated_graph_and_processors_from_file(path: str) -> tuple[nx.Graph,
     return G, p, params
 
 def calc_edgecut(G: nx.Graph, partition: list[int]) -> int:
+    """
+    Calculate the number of edges crossing between parts in a graph partition.
+
+    Args:
+        G (nx.Graph): The graph to calculate the edgecut for.
+        partition (list[int]): The partition of the graph.
+
+    Returns:
+        int: The number of edges crossing between different parts.
+    """
     edgecut: int = 0
     for edge in G.edges:
         node1, node2 = edge
@@ -117,6 +183,21 @@ def calc_edgecut(G: nx.Graph, partition: list[int]) -> int:
     return edgecut
 
 def calc_cut_ratio(G: nx.Graph | None, partition: list[int] | None) -> float | None:
+    """
+    Calculate the cut ratio of a graph given a partitioning of the graph.
+
+    The cut ratio is the number of edges crossing between different partitions
+    divided by the total number of edges in the graph.
+
+    Args:
+        G (nx.Graph): The graph to calculate the cut ratio for.
+        partition (list[int]): The partitioning of the graph.
+
+    Returns:
+        float | None: The cut ratio of the graph given the partitioning. If the
+            graph or partition is None, returns None.
+    """
+
     if G is None or partition is None:
         return None
 
@@ -126,6 +207,22 @@ def calc_cut_ratio(G: nx.Graph | None, partition: list[int] | None) -> float | N
     return calc_edgecut(G, partition) / len(G.edges)
 
 def unpack_mk(mk_partition: list[int], mk_data: list[int]) -> list[int]:
+    """
+    Unpacks a coarsened partition into its original form using mapping data.
+
+    Args:
+        mk_partition (list[int]): A list representing the coarsened partition,
+            where each index corresponds to a coarsened node and the value is
+            the processor assigned to that node.
+        mk_data (list[int]): A list representing the original nodes' mapping
+            to coarsened nodes.
+
+    Returns:
+        list[int]: A list representing the original partition where each index
+            corresponds to an original node and the value is the processor
+            assigned to that node.
+    """
+
     ans = mk_data.copy()
     mapping: dict[int, int] = dict()
 
@@ -138,6 +235,20 @@ def unpack_mk(mk_partition: list[int], mk_data: list[int]) -> list[int]:
     return ans
 
 def do_unpack_mk(mk_partition: list[int], mk_data_path: str) -> list[int]:
+    """
+    Unpacks a coarsened partition into its original form using mapping data.
+
+    Args:
+        mk_partition (list[int]): A list representing the coarsened partition,
+            where each index corresponds to a coarsened node and the value is
+            the processor assigned to that node.
+        mk_data_path (str): The path to the mapping data file.
+
+    Returns:
+        list[int]: A list representing the original partition where each index
+            corresponds to an original node and the value is the processor
+            assigned to that node.
+    """
     while not isfile(mk_data_path):
         print('waiting for: ', mk_data_path)
         sleep(10)
@@ -149,6 +260,20 @@ def do_unpack_mk(mk_partition: list[int], mk_data_path: str) -> list[int]:
         return unpack_mk(mk_partition, mk_data)
 
 def fix_rand_graph_file(path: str) -> None:
+    """
+    Fixes the node identifiers in a graph file by ensuring they are contiguous
+    and starting from 0. Reads the graph from the specified path, renames the
+    node identifiers in the file, and writes the corrected graph back to the
+    file.
+
+    Args:
+        path (str): The file path to the graph file that needs to be fixed.
+
+    Raises:
+        AssertionError: If the graph nodes are not contiguous and starting from 0
+            after the fix.
+    """
+
     graph: nx.Graph = input_graph(path)
     
     with open(path, 'r') as file:

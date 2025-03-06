@@ -1,6 +1,6 @@
-import base_partitioner.settings as settings
+import algo.base_partitioner.settings as settings
 
-from helpers import calc_edgecut, calc_cut_ratio
+from algo.helpers import calc_edgecut, calc_cut_ratio
 
 from os import makedirs
 from os.path import isfile
@@ -34,6 +34,21 @@ class BasePartitioner:
             file.write(' '.join(map(str, partition)))
 
     def metis_part(self, G: nx.Graph, nparts: int, ufactor: int, check_cache: bool, seed: int | None, recursive: bool | None = True, ) -> tuple[int, list[int]]:
+        """
+        Use METIS to partition a graph.
+
+        Args:
+            G (nx.Graph): The graph to be partitioned.
+            nparts (int): The number of parts to partition the graph into.
+            ufactor (int): The imbalance factor for METIS.
+            check_cache (bool): Whether to check the cache before calling METIS.
+            seed (int | None): The seed for METIS.
+            recursive (bool | None): Whether to use the recursive partitioning method of METIS.
+
+        Returns:
+            tuple[int, list[int]]: A tuple containing the edgecut and a list of the partition
+            assignment for each node.
+        """
         if recursive is None:
             recursive = nparts > 8
 
@@ -66,12 +81,36 @@ class BasePartitioner:
         return (edgecuts, partition)
 
     def check_cut_ratio(self, G: nx.Graph | None, partition: list[int] | None, cr_max: float) -> bool:
+        """
+        Checks if the cut ratio of a given graph with a given partition is not more than a given value.
+
+        Args:
+            G (nx.Graph | None): The graph to calculate the cut ratio for.
+            partition (list[int] | None): A list of the partition assignment for each node.
+            cr_max (float): The maximum allowed cut ratio.
+
+        Returns:
+            bool: Whether the cut ratio is not more than cr_max.
+        """
+
         if G is None or partition is None:
             return False
 
         return calc_cut_ratio(G, partition) <= cr_max  # type: ignore
     
     def f(self, G: nx.Graph | None, PG: nx.Graph, partition: list[int] | None, cr_max: float) -> float:
+        """
+        Calculates the objective function value.
+
+        Args:
+            G (nx.Graph | None): The graph to calculate the load for.
+            PG (nx.Graph): The processor graph.
+            partition (list[int] | None): A list of the partition assignment for each node.
+            cr_max (float): The maximum allowed cut ratio.
+
+        Returns:
+            float: Objective function value.
+        """
         p_loads = [0] * len(PG)
 
         if G is None or partition is None:
@@ -121,6 +160,22 @@ class BasePartitioner:
                 file.write('None')
 
     def do_metis(self, G: nx.Graph, nparts: int, cr_max: float, check_cache: bool, seed: int | None, recursive: bool | None = None, steps_back: int = 5, ) -> list[int] | None:
+        """
+        Use METIS to partition a graph with a given maximum cut ratio.
+
+        Args:
+            G (nx.Graph): The graph to be partitioned.
+            nparts (int): The number of parts to partition the graph into.
+            cr_max (float): The maximum allowed cut ratio.
+            check_cache (bool): Whether to check the cache before calling METIS.
+            seed (int | None): The seed for METIS.
+            recursive (bool | None): Whether to use the recursive partitioning method of METIS.
+            steps_back (int): The number of times of ufactor reducing.
+
+        Returns:
+            list[int] | None: A list of the partition assignment for each node if the cut ratio is
+            satisfied, otherwise None.
+        """
         if G is None or nparts is None:
             raise TypeError()
 

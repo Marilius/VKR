@@ -10,7 +10,8 @@
         "networkx",
         "nparts",
         "objtype",
-        "rightchild"
+        "rightchild",
+        "ufactor"
     ],
     "cmake.sourceDirectory": "/home/yarik/VKR",
     "python.testing.unittestArgs": [

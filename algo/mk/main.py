@@ -1,8 +1,8 @@
-from helpers import input_graph, calc_cut_ratio, do_unpack_mk, unpack_mk
+from algo.helpers import input_graph, calc_cut_ratio, do_unpack_mk, unpack_mk
 
-import base_partitioner.settings as settings
+import algo.base_partitioner.settings as settings
 
-from greed.main import GreedPartitioner
+from algo.greed.main import GreedPartitioner
 
 import networkx as nx
 
@@ -14,6 +14,18 @@ import time
 
 class MKPartitioner(GreedPartitioner):
     def write_mk(self, g_name: str, G_grouped: nx.Graph, mk_partition: list[int], cr_max: float) -> None:
+        """
+        Writes a coarsened graph to a file and information needed for further uncoarsening.
+
+        Args:
+            g_name (str): The name of the graph file.
+            G_grouped (nx.Graph): The coarsened graph.
+            mk_partition (list[int]): The coarsening information.
+            cr_max (float): The maximum allowed cut ratio.
+
+        Returns:
+            None
+        """
         if cr_max == 1:
             cr_max = 1
 
@@ -38,8 +50,22 @@ class MKPartitioner(GreedPartitioner):
             file.write(' '.join(map(str, mk_partition)))
 
     def load_mk_nparts_cache(self, G: nx.Graph, nparts: int, cr: float, weighted: bool, steps_back: int) -> list[int] | None:
+        """
+        Loads result of mk_nparts function from the cache for a given graph, the number of parts, the cut ratio, whether the graph is weighted and the number of steps back.
+
+        Args:
+            G (nx.Graph): The graph.
+            nparts (int): The number of parts.
+            cr (float): The cut ratio.
+            weighted (bool): Whether the graph is weighted.
+            steps_back (int): The number of steps back.
+
+        Returns:
+            list[int] | None: The result of mk_nparts function call if it exists in the cache, otherwise None.
+        """
+
         w = '_w_' if 'node_weight_attr' in G.graph else '_!'
-        path = settings.CACHE_DIR + '/' + G.graph['graph_name'] + '_!' + str(nparts) + '!_' + w + str(steps_back) + '!_' + str(cr) + '_' + str(weighted) + '.txt'
+        path = f'{settings.CACHE_DIR}/{G.graph["graph_name"]}_!{str(nparts)}!_{w}{str(steps_back)}!_{str(cr)}_{str(weighted)}.txt'
 
         if isfile(path):
             with open(path, 'r') as f:
@@ -54,8 +80,22 @@ class MKPartitioner(GreedPartitioner):
         return None
 
     def write_mk_nparts_cache(self, G: nx.Graph, nparts: int, cr: float, weighted: bool, partition: list[int] | None, steps_back: int) -> None:        
+        """
+        Writes result of mk_nparts function to the cache for a given graph, the number of parts, the cut ratio, whether the graph is weighted and the number of steps back.
+
+        Args:
+            G (nx.Graph): The graph.
+            nparts (int): The number of parts.
+            cr (float): The cut ratio.
+            weighted (bool): Whether the graph is weighted.
+            partition (list[int] | None): The result of mk_nparts function call.
+            steps_back (int): The number of steps back.
+
+        Returns:
+            None
+        """
         w = '_w_' if 'node_weight_attr' in G.graph else '_!'
-        path = settings.CACHE_DIR + '/' + G.graph['graph_name'] + '_!' + str(nparts) + '!_' + w + str(steps_back) + '!_' + str(cr) + '_' + str(weighted) + '.txt'
+        path = f'{settings.CACHE_DIR}/{G.graph["graph_name"]}_!{str(nparts)}!_{w}{str(steps_back)}!_{str(cr)}_{str(weighted)}.txt'
         makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
 
         with open(path, 'w') as file:
@@ -64,21 +104,42 @@ class MKPartitioner(GreedPartitioner):
             else:
                 file.write('None')
 
-    def mk_nparts(self, G: nx.Graph, nparts: int, cr_max: float, check_cache: bool, seed: int | None, max_ufactor: float | None = 1e7, weighted: bool = True, steps_back: int = 5) -> tuple[nx.Graph, list[int]] | tuple[None, None]:
+    def mk_nparts(
+        self,
+        G: nx.Graph,
+        nparts: int,
+        cr_max: float,
+        check_cache: bool,
+        seed: int | None,
+        max_ufactor: float | None = 1e7,
+        weighted: bool = True,
+        steps_back: int = 5
+    ) -> tuple[nx.Graph, list[int]] | tuple[None, None]:
+        """
+        Runs the MK partitioning algorithm on a given graph with a given number of parts and maximum allowed cut ratio.
+
+        Args:
+            G (nx.Graph): The graph to be coarsened.
+            nparts (int): The number of nodes in coarsened graph.
+            cr_max (float): The maximum allowed cut ratio.
+            check_cache (bool): Whether to check the cache before running the algorithm.
+            seed (int | None): The seed for the algorithm.
+            max_ufactor (float | None): The maximum allowed ufactor for METIS.
+            weighted (bool): Whether the graph is weighted.
+            steps_back (int): The number of steps back.
+
+        Returns:
+            tuple[nx.Graph, list[int]] | tuple[None, None]: A tuple containing the coarsened graph and the partition assignment if the cut ratio is satisfied, otherwise None.
+        """
         if max_ufactor is not None:
             self.MAX_UFACTOR = max_ufactor
-
-        # if check_cache:
-        #     partition = self.load_mk_nparts_cache(G, nparts, cr_max, weighted, steps_back=steps_back)
-        #     if partition is not None:
-        #         G_grouped = self.group_mk(G, partition, weighted=weighted)
-        #         G_grouped.graph['graph_name'] = G.graph['graph_name'] + '_grouped_' + str(nparts) + '_' + str(cr_max) + '_' + str(weighted)
-        #         return (G_grouped, partition)
-        # print('dddddd', len(G.nodes))
+        if check_cache:
+            partition = self.load_mk_nparts_cache(G, nparts, cr_max, weighted, steps_back=steps_back)
+            if partition is not None:
+                G_grouped = self.group_mk(G, partition, weighted=weighted)
+                G_grouped.graph['graph_name'] = f'{G.graph["graph_name"]}_grouped_{str(nparts)}_{str(cr_max)}_{str(weighted)}'
+                return (G_grouped, partition)
         partition_ans = super().do_metis(G, nparts, cr_max, check_cache, seed, steps_back=steps_back)
-        # print(G.graph['graph_name'])
-        # print('dddddd', len(G.nodes), len(partition_ans))
-        print('cccccccccccc', partition_ans)
 
         if partition_ans is None:
             return (None, None)
@@ -88,14 +149,25 @@ class MKPartitioner(GreedPartitioner):
         print('--->', G_grouped.nodes)
         print('--->', partition_ans)
 
-        # if check_cache:
-        #     self.write_mk_nparts_cache(G, nparts, cr_max, weighted, partition_ans, steps_back=steps_back)
+        if check_cache:
+            self.write_mk_nparts_cache(G, nparts, cr_max, weighted, partition_ans, steps_back=steps_back)
 
-        G_grouped.graph['graph_name'] = G.graph['graph_name'] + '_grouped_' + str(nparts) + '_' + str(cr_max) + '_' + str(weighted)
+        G_grouped.graph['graph_name'] = f'{G.graph["graph_name"]}_grouped_{str(nparts)}_{str(cr_max)}_{str(weighted)}'
 
         return (G_grouped, partition_ans)
 
     def load_mk_part_cache(self, G: nx.Graph, cr_max: float, steps_back: int) -> list[int] | None:
+        """
+        Loads result of mk_part function from the cache for a given graph, the maximum allowed cut ratio and the number of steps back.
+
+        Args:
+            G (nx.Graph): The graph.
+            cr_max (float): The maximum allowed cut ratio.
+            steps_back (int): The number of steps back.
+
+        Returns:
+            list[int] | None: The result of mk_part function call if it exists in the cache, otherwise None.
+        """
         node_attr = 'weight' if 'node_weight_attr' in G.graph else None
         G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
         path = f'{settings.CACHE_DIR}/mk_part/{G_hash}_{cr_max}_{steps_back}.txt'
@@ -109,6 +181,21 @@ class MKPartitioner(GreedPartitioner):
         return None
 
     def write_mk_part_cache(self, G: nx.Graph, partition: list[int], cr_max: float, steps_back: int) -> None:
+        """
+        Writes the result of the mk_part function call to the cache for a given graph,
+        partition, maximum allowed cut ratio, and number of steps back.
+
+        Args:
+            G (nx.Graph): The input graph.
+            partition (list[int]): The partitioning result where each node is assigned
+                to a partition.
+            cr_max (float): The maximum allowed cut ratio.
+            steps_back (int): The number of steps back.
+
+        Returns:
+            None
+        """
+
         node_attr = 'weight' if 'node_weight_attr' in G.graph else None
         G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
         path = f'{settings.CACHE_DIR}/mk_part/{G_hash}_{cr_max}_{steps_back}.txt'
@@ -119,6 +206,19 @@ class MKPartitioner(GreedPartitioner):
             file.write(' '.join(map(str, partition)))
 
     def mk_part(self, G: nx.Graph, cr_max: float, check_cache: bool, seed: int | None, steps_back: int = 5) -> tuple[int, list[int]]:
+        """
+        Divides a graph into the maximum number of graph parts that satisfy the constraint on the cut ratio.
+
+        Args:
+            G (nx.Graph): The graph to be partitioned.
+            cr_max (float): The maximum allowed cut ratio.
+            check_cache (bool): Whether to check the cache before calling METIS.
+            seed (int | None): The seed for METIS.
+            steps_back (int): The number of times of ufactor reducing.
+
+        Returns:
+            tuple[int, list[int]]: A tuple containing the number of parts and a list of the partition assignment for each node if the cut ratio is satisfied, otherwise None.
+        """
         if check_cache:
             partition = self.load_mk_part_cache(G, cr_max, steps_back=steps_back)
             if partition is not None:
@@ -183,8 +283,6 @@ class MKPartitioner(GreedPartitioner):
                 break
             ufactor *= 2
 
-        print('n_ans, n, left, right= ', n_ans, n, num_left, num_right, settings.MAX_UFACTOR, calc_cut_ratio(G, partition_ans))
-
         if set(range(n_ans)) != set(partition_ans):
             mapping = dict()
 
@@ -194,26 +292,46 @@ class MKPartitioner(GreedPartitioner):
             for i in range(len(partition_ans)):
                 partition_ans[i] = mapping[partition_ans[i]]
 
-        print('n_ans, n, left, right= ', n_ans, n, num_left, num_right, settings.MAX_UFACTOR, calc_cut_ratio(G, partition_ans))
-
         if check_cache:
             self.write_mk_part_cache(G, partition_ans, cr_max, steps_back=steps_back)
 
         return (n_ans, partition_ans)
 
     def get_num_mk(self, G: nx.Graph, cr_max: float, check_cache: bool, seed: int | None, steps_back: int = 5, ) -> int:
+        """
+        Returns the maximum number of parts into which a graph can be divided while still satisfying the constraint
+
+        Args:
+            G (nx.Graph): The graph to be partitioned.
+            cr_max (float): The maximum allowed cut ratio.
+            check_cache (bool): Whether to check the cache before calling METIS.
+            seed (int | None): The seed for METIS.
+            steps_back (int): The number of times of ufactor reducing.
+
+        Returns:
+            int: the maximum number of parts into which a graph can be divided.
+        """
         (n, _) = self.mk_part(G, cr_max, check_cache, seed, steps_back=steps_back)
 
         return n
 
     def group_mk(self, G: nx.Graph, partition: list[int], weighted: bool = True) -> nx.Graph:
+        """
+        Groups nodes in a graph based on a given partition, creating a new coarsened graph.
+
+        Args:
+            G (nx.Graph): The original graph to be grouped.
+            partition (list[int]): A list where each index corresponds to a node in the graph,
+                and the value is the partition group the node belongs to.
+            weighted (bool): Indicates whether to mark the grouped graph as weighted.
+
+        Returns:
+            nx.Graph: A new graph where nodes are grouped according to the partition, with
+            edges between groups if there were edges between any nodes in the original graph.
+        """
+
         grouped_G = nx.Graph()
         nodes_ids = sorted(list(set(partition)))
-
-        print(sorted(G.nodes))
-        print(len(G.nodes), len(partition))
-        print(G.nodes(data=True))
-        print(partition)
 
         for node_id in nodes_ids:
             weight = 0
@@ -228,15 +346,6 @@ class MKPartitioner(GreedPartitioner):
                 if node_id != neighbor_id:
                     grouped_G.add_edge(node_id, neighbor_id)
             
-            # if node_id not in grouped_G.nodes or 'weight' not in grouped_G.nodes(data=True)[node_id]:
-            #     grouped_G.add_node(node_id)
-            #     grouped_G.nodes[node_id]['weight'] = G.nodes[old_node_id]['weight']
-            # else:
-            #     # print(grouped_G.nodes(data=True)[node_id])
-            #     grouped_G.nodes[node_id]['weight'] += G.nodes[old_node_id]['weight']
-                    
-        # TODO ^ error
-
         if weighted:
             grouped_G.graph['node_weight_attr'] = 'weight'
 
@@ -246,6 +355,23 @@ class MKPartitioner(GreedPartitioner):
 
 
     def MK_greed_greed(self, G: nx.Graph, PG: nx.Graph, cr_max: float, check_cache: bool, seed: int | None, steps_back: int = 6, ) -> list[int] | None:
+        """
+        Runs the MK partitioning algorithm on a given graph with a given number of parts and maximum allowed cut ratio, then
+        uses the result as a starting point for a greedy partitioning algorithm, and finally returns the best partition found.
+
+        TODO TODO
+
+        Args:
+            G (nx.Graph): The graph to be partitioned.
+            PG (nx.Graph): The physical graph.
+            cr_max (float): The maximum allowed cut ratio.
+            check_cache (bool): Whether to check the cache before running the algorithm.
+            seed (int | None): The seed for the algorithm.
+            steps_back (int): The number of steps back.
+
+        Returns:
+            list[int] | None: The best partition found, or None if no valid partition was found.
+        """
         max_mk = self.get_num_mk(G, cr_max, check_cache, seed, steps_back=steps_back)
 
         best_partition: list[int] = [0] * len(G.nodes)
@@ -264,14 +390,11 @@ class MKPartitioner(GreedPartitioner):
 
         for nparts in range(1, max_mk + 1):
             (G_grouped, mk_data) = self.mk_nparts(G, nparts, cr_max, check_cache, seed, steps_back=steps_back)
-            print('bbbbbbbbbbb', G_grouped, mk_data)
 
             if G_grouped is None or mk_data is None:
                 continue
 
             mk_partition = self.do_metis_with_pg(G_grouped, PG, 1, check_cache, seed, steps_back=steps_back)
-            # print('aaaaaaaaa', mk_partition)
-            # print('aaaaaaaaa', G_grouped)
             mk_partition = self.do_greed(G_grouped, PG, mk_partition, 1)
 
             if mk_partition is None:
@@ -304,6 +427,24 @@ class MKPartitioner(GreedPartitioner):
         check_cache: bool,
         seed: int | None,
     ) -> list[int] | None:
+        """
+        Run the MK_greed_greed algorithm on a weighted graph and write the results to a file.
+
+        Args:
+            input_dir (str): The directory containing the input graph.
+            output_dir (str): The directory where the partitioning results will be written.
+            graph_file (str): The name of the input graph file.
+            physical_graph_dir (str): The directory containing the physical graph.
+            physical_graph_path (str): The path to the physical graph file.
+            cr_max (float): The maximum allowed cut ratio.
+            steps_back (int): The number of steps to go back in the MK algorithm.
+            check_cache (bool): Whether to check if the result is already in the cache.
+            seed (int | None): The seed to use for the MK algorithm.
+
+        Returns:
+            list[int] | None: The partitioning result or None if the cut ratio is not satisfied.
+        """
+
         output_dir = output_dir.replace('results', 'results2')
         weighted_graph: nx.Graph = input_graph(join(input_dir, graph_file))
         physical_graph = input_graph(join(physical_graph_dir, physical_graph_path))
