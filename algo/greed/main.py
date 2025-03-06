@@ -232,7 +232,6 @@ class GreedPartitioner(BasePartitioner):
         Returns:
             None
         """
-        output_dir = output_dir.replace('results', 'results2')
         weighted_graph: nx.Graph = input_graph(join(input_dir, graph_file))
         physical_graph = input_graph(join(physical_graph_dir, physical_graph_path))
         output_dir_mk = output_dir.replace('greed', 'simple_part')
@@ -250,7 +249,6 @@ class GreedPartitioner(BasePartitioner):
         physical_graph_dir: str,
         physical_graph_path: str,
     ) -> None:
-        output_dir = output_dir.replace('results', 'results2')
         weighted_graph = input_graph(join(input_dir, graph_file))
         unweighted_graph = input_networkx_unweighted_graph_from_file(join(input_dir, graph_file))
 

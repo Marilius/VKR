@@ -445,7 +445,6 @@ class MKPartitioner(GreedPartitioner):
             list[int] | None: The partitioning result or None if the cut ratio is not satisfied.
         """
 
-        output_dir = output_dir.replace('results', 'results2')
         weighted_graph: nx.Graph = input_graph(join(input_dir, graph_file))
         physical_graph = input_graph(join(physical_graph_dir, physical_graph_path))
         output_dir_mk = output_dir.replace('greed', 'MK_greed_greed_weighted')
@@ -528,8 +527,6 @@ class MKPartitioner(GreedPartitioner):
         check_cache: bool,
         steps_back: int = 6,
     ) -> None:
-        output_dir = output_dir.replace('results', 'results2')
-        
         weighted_graph: nx.Graph = input_graph(join(input_dir, graph_file))
         physical_graph = input_graph(join(physical_graph_dir, physical_graph_path))
         output_dir_mk = output_dir.replace('greed', 'MK_greed_greed_with_geq_cr')

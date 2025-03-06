@@ -13,7 +13,7 @@ class BasePartitioner:
     def load_metis_part_cache(self, G: nx.Graph, nparts: int, ufactor: int, recursive: bool) -> list[int] | None:
         node_attr = 'weight' if 'node_weight_attr' in G.graph else None
         G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
-        path = f'2{settings.CACHE_DIR}/metis_part/{G_hash}_{nparts}_{ufactor}_{recursive}.txt'
+        path = f'{settings.CACHE_DIR}/metis_part/{G_hash}_{nparts}_{ufactor}_{recursive}.txt'
 
         if isfile(path):
             with open(path, 'r') as f:
@@ -26,7 +26,7 @@ class BasePartitioner:
     def write_metis_part_cache(self, G: nx.Graph, nparts: int, ufactor: int, recursive: bool, partition: list[int]) -> None:
         node_attr = 'weight' if 'node_weight_attr' in G.graph else None
         G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
-        path = f'2{settings.CACHE_DIR}/metis_part/{G_hash}_{nparts}_{ufactor}_{recursive}.txt'
+        path = f'{settings.CACHE_DIR}/metis_part/{G_hash}_{nparts}_{ufactor}_{recursive}.txt'
 
         makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
 
@@ -129,7 +129,7 @@ class BasePartitioner:
     def load_do_metis_cache(self, G: nx.Graph, nparts: int, recursive: bool, cr_max: float, steps_back: int) -> list[int] | None:
         node_attr = 'weight' if 'node_weight_attr' in G.graph else None
         G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
-        path = f'2{settings.CACHE_DIR}/base_do_metis/{G_hash}_{nparts}_{cr_max}_{recursive}_{steps_back}.txt'
+        path = f'{settings.CACHE_DIR}/base_do_metis/{G_hash}_{nparts}_{cr_max}_{recursive}_{steps_back}.txt'
 
         if isfile(path):
             with open(path, 'r') as f:
@@ -146,7 +146,7 @@ class BasePartitioner:
     def write_do_metis_cache(self, G: nx.Graph, nparts: int, recursive: bool, cr_max: float, partition: list[int] | None, steps_back: int) -> None:
         node_attr = 'weight' if 'node_weight_attr' in G.graph else None
         G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
-        path = f'2{settings.CACHE_DIR}/base_do_metis/{G_hash}_{nparts}_{cr_max}_{recursive}_{steps_back}.txt'
+        path = f'{settings.CACHE_DIR}/base_do_metis/{G_hash}_{nparts}_{cr_max}_{recursive}_{steps_back}.txt'
 
         # weighted = '_w_' if 'node_weight_attr' in G.graph else '_!'
         # path = settings.CACHE_DIR + '/' + G.graph['graph_name'] + weighted + str(nparts) + '!_' + str(cr_max) + '_' + str(recursive) + f'_{steps_back}_' + '.txt'
@@ -223,7 +223,7 @@ class BasePartitioner:
         node_attr = 'weight' if 'node_weight_attr' in G.graph else None
         G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
         PG_hash = nx.weisfeiler_lehman_graph_hash(PG, node_attr=node_attr)
-        path = f'2{settings.CACHE_DIR}/do_metis_with_pg/{G_hash}_{PG_hash}_{cr_max}_{steps_back}.txt'
+        path = f'{settings.CACHE_DIR}/do_metis_with_pg/{G_hash}_{PG_hash}_{cr_max}_{steps_back}.txt'
 
         if isfile(path):
             with open(path, 'r') as f:
@@ -241,7 +241,7 @@ class BasePartitioner:
         node_attr = 'weight' if 'node_weight_attr' in G.graph else None
         G_hash = nx.weisfeiler_lehman_graph_hash(G, node_attr=node_attr)
         PG_hash = nx.weisfeiler_lehman_graph_hash(PG, node_attr=node_attr)
-        path = f'2{settings.CACHE_DIR}/do_metis_with_pg/{G_hash}_{PG_hash}_{cr_max}_{steps_back}.txt'
+        path = f'{settings.CACHE_DIR}/do_metis_with_pg/{G_hash}_{PG_hash}_{cr_max}_{steps_back}.txt'
 
         makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
 
