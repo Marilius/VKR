@@ -5,3 +5,7 @@ algo/ - algorithm implementation
 data/ - input data for experiments
 
 scripts/ - scripts for running the experiments
+
+```bash
+python -m scripts.research
+```
