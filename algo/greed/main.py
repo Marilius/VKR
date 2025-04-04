@@ -1,7 +1,5 @@
 from algo.base_partitioner.main import BasePartitioner
-
-from algo.helpers import input_graph, input_networkx_unweighted_graph_from_file, calc_cut_ratio
-
+from algo.helpers import input_graph, input_networkx_unweighted_graph_from_file, calc_cut_ratio, check_cut_ratio, f
 
 from os import makedirs
 from os.path import join
@@ -43,8 +41,8 @@ class GreedPartitioner(BasePartitioner):
             physical_graph_path.split('/')[-1],  # The physical graph name
             calc_cut_ratio(G=G, partition=partition),  # The cut ratio
             cr_max,  # The maximum allowed cut ratio
-            self.f(G, PG, partition, cr_max),  # The function value
-            partition if self.check_cut_ratio(G, partition, cr_max) else None,  # The partition list
+            f(G, PG, partition, cr_max),  # The function value
+            partition if check_cut_ratio(G, partition, cr_max) else None,  # The partition list
             '\n',  # A newline at the end of the line
         ]
 
@@ -150,7 +148,7 @@ class GreedPartitioner(BasePartitioner):
                                 max((p_loads[p1] - a_weight) / PG.nodes[p1]['weight'], (p_loads[proc] + a_weight) / PG.nodes[proc]['weight']):
                             partition_copy = partition.copy()
                             partition_copy[a] = proc
-                            if self.check_cut_ratio(G, partition_copy, cr_max):
+                            if check_cut_ratio(G, partition_copy, cr_max):
                                 # Update processor loads and partition
                                 p_loads[proc] += a_weight
                                 p_loads[p1] -= a_weight
@@ -164,6 +162,18 @@ class GreedPartitioner(BasePartitioner):
         return partition
 
     def do_greed(self, G: nx.Graph, PG: nx.Graph, partition: list[int] | None, cr_max: float) -> list[int] | None:
+        """
+        Run the greedy partitioning algorithm on the given graph and physical graph.
+
+        Args:
+            G (nx.Graph): The graph to be partitioned.
+            PG (nx.Graph): The physical graph.
+            partition (list[int] | None): An initial partition assignment for each node.
+            cr_max (float): The maximum allowed cut ratio.
+
+        Returns:
+            list[int] | None: The partition assignment for each node if the cut ratio is satisfied, otherwise None.
+        """
         if partition is None:
             return None
 
@@ -172,7 +182,7 @@ class GreedPartitioner(BasePartitioner):
         for i in range(len(partition)):
             weights[partition[i]] += G.nodes[i]['weight']
         print('BASE', weights)
-        print(self.f(G, PG, partition, cr_max))
+        print(f(G, PG, partition, cr_max))
 
         partition = self.postprocessing_phase(G, PG, partition, cr_max)
         print('GREED', 'cr:', calc_cut_ratio(G, partition))
@@ -180,7 +190,7 @@ class GreedPartitioner(BasePartitioner):
         for i in range(len(partition)):
             weights[partition[i]] += G.nodes[i]['weight']
         print('GREED', weights)
-        print(self.f(G, PG, partition, cr_max))
+        print(f(G, PG, partition, cr_max))
 
         return partition
 
@@ -232,7 +242,6 @@ class GreedPartitioner(BasePartitioner):
         Returns:
             None
         """
-        output_dir = output_dir.replace('results', 'results2')
         weighted_graph: nx.Graph = input_graph(join(input_dir, graph_file))
         physical_graph = input_graph(join(physical_graph_dir, physical_graph_path))
         output_dir_mk = output_dir.replace('greed', 'simple_part')
@@ -250,7 +259,6 @@ class GreedPartitioner(BasePartitioner):
         physical_graph_dir: str,
         physical_graph_path: str,
     ) -> None:
-        output_dir = output_dir.replace('results', 'results2')
         weighted_graph = input_graph(join(input_dir, graph_file))
         unweighted_graph = input_networkx_unweighted_graph_from_file(join(input_dir, graph_file))
 

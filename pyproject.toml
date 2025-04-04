@@ -12,6 +12,7 @@ metis = "^0.2a5"
 ipykernel = "^6.29.5"
 matplotlib = "^3.9.2"
 joblib = "^1.4.2"
+deap = "^1.4.2"
 
 
 [tool.poetry.group.dev.dependencies]

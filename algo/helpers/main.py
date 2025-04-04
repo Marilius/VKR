@@ -1,8 +1,62 @@
+import settings
+
 import networkx as nx
 
 from os.path import isfile
 
 from time import sleep
+
+
+def check_cut_ratio(G: nx.Graph | None, partition: list[int] | None, cr_max: float) -> bool:
+    """
+    Checks if the cut ratio of a given graph with a given partition is not more than a given value.
+
+    Args:
+        G (nx.Graph | None): The graph to calculate the cut ratio for.
+        partition (list[int] | None): A list of the partition assignment for each node.
+        cr_max (float): The maximum allowed cut ratio.
+
+    Returns:
+        bool: Whether the cut ratio is not more than cr_max.
+    """
+
+    if G is None or partition is None:
+        return False
+
+    return calc_cut_ratio(G, partition) <= cr_max  # type: ignore
+    
+
+def f_new() -> float:
+    ...
+
+
+def f(G: nx.Graph | None, PG: nx.Graph, partition: list[int] | None, cr_max: float) -> float:
+    """
+    Calculates the objective function value.
+
+    Args:
+        G (nx.Graph | None): The graph to calculate the load for.
+        PG (nx.Graph): The processor graph.
+        partition (list[int] | None): A list of the partition assignment for each node.
+        cr_max (float): The maximum allowed cut ratio.
+
+    Returns:
+        float: Objective function value.
+    """
+    p_loads = [0] * len(PG)
+
+    if G is None or partition is None:
+        return 2 * settings.BIG_NUMBER
+
+    for i in range(len(partition)):
+        p_loads[partition[i]] += G.nodes[i]['weight']
+
+    for i in range(len(PG)):
+        p_loads[i] /= PG.nodes[i]['weight'] 
+
+    penalty = 0 if check_cut_ratio(G, partition, cr_max) else settings.BIG_NUMBER
+
+    return max(p_loads) + penalty
 
 
 def input_graph(path: str) -> nx.Graph:
