@@ -239,7 +239,7 @@ class MKPartitioner(GreedPartitioner):
 
             ufactor = 1
             while True: 
-                (_, partition) = self.metis_part(G, n, ufactor, check_cache, seed)
+                partition = self.metis_part(G, n, ufactor, check_cache, seed)
                 print(n, len(set(partition)), ufactor, calc_cut_ratio(G, partition))
                 if check_cut_ratio(G, partition, cr_max):
                     print('was here')
@@ -251,7 +251,7 @@ class MKPartitioner(GreedPartitioner):
                         if ufactor < 1:
                             break
 
-                        (_, partition) = self.metis_part(G, n, ufactor, check_cache, seed)
+                        partition = self.metis_part(G, n, ufactor, check_cache, seed)
                         if len(set(partition_curr)) < len(set(partition)):
                             partition_curr = partition.copy()
 
@@ -275,7 +275,7 @@ class MKPartitioner(GreedPartitioner):
 
         ufactor = 1
         while ufactor < settings.MAX_UFACTOR:
-            (_, partition) = self.metis_part(G, num_right, ufactor, check_cache, seed)
+            partition = self.metis_part(G, num_right, ufactor, check_cache, seed)
             if check_cut_ratio(G, partition, cr_max):
                 if len(set(partition)) > n_ans:
                     n_ans = len(set(partition))

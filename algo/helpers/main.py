@@ -3,9 +3,65 @@ import settings
 import networkx as nx
 
 from os.path import isfile
+from os import makedirs
 
 from time import sleep
 
+from functools import wraps
+from inspect import signature
+
+
+def get_cache_filename(func_name: str, **kwargs) -> str:
+    file_name = []
+    for arg in kwargs.values():
+        if isinstance(arg, nx.Graph):
+            node_attr = 'weight' if 'node_weight_attr' in arg.graph else None
+            file_name.append(nx.weisfeiler_lehman_graph_hash(arg, node_attr=node_attr))
+        else:
+            file_name.append(arg)
+    path = f'{settings.CACHE_DIR}/{func_name}/{"_".join(file_name)}.txt'
+    return path
+
+def load_cache(func_name: str, *args, **kwargs) -> list[int] | None:
+    path = get_cache_filename(func_name, **kwargs)
+    if isfile(path):
+        with open(path, 'r') as f:
+            line = f.readline()
+            partition = list(map(int, line.split()))
+            return partition
+
+    return None
+
+def write_cache(func_name: str, partition: list[int] | None, **kwargs) -> None:
+    path = get_cache_filename(func_name, **kwargs)
+    
+    makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
+    with open(path, 'w') as file:
+        if partition:
+            file.write(' '.join(map(str, partition)))
+        else:
+            file.write('None')
+
+def add_cache_check(func):
+    @wraps(func)
+    def wrapped(*args, **kwargs) -> list[int] | None:
+        if not kwargs: 
+            raise TypeError('No kwargs given to function')
+        check_cache = kwargs.get('check_cache', False)
+        if check_cache:
+            partition = load_cache(func.__name__, *args, **kwargs)
+            G = kwargs['G']
+            cr_max = kwargs['cr_max']
+            if partition and len(partition) == len(G.nodes) and check_cut_ratio(G, partition, cr_max):
+                return partition
+
+        partition = func(*args, **kwargs)
+
+        if check_cache:
+            write_cache(func.__name__, partition, *args, **kwargs)
+            
+        return partition
+    return wrapped
 
 def check_cut_ratio(G: nx.Graph | None, partition: list[int] | None, cr_max: float) -> bool:
     """
@@ -24,11 +80,9 @@ def check_cut_ratio(G: nx.Graph | None, partition: list[int] | None, cr_max: flo
         return False
 
     return calc_cut_ratio(G, partition) <= cr_max  # type: ignore
-    
 
 def f_new() -> float:
     ...
-
 
 def f(G: nx.Graph | None, PG: nx.Graph, partition: list[int] | None, cr_max: float) -> float:
     """
@@ -57,7 +111,6 @@ def f(G: nx.Graph | None, PG: nx.Graph, partition: list[int] | None, cr_max: flo
     penalty = 0 if check_cut_ratio(G, partition, cr_max) else settings.BIG_NUMBER
 
     return max(p_loads) + penalty
-
 
 def input_graph(path: str) -> nx.Graph:
     """
@@ -172,7 +225,6 @@ def input_generated_graph_partition(path: str) -> list[int]:
         exact_partition = list(map(int, f.readline().strip().split()))
 
     return exact_partition
-
 
 def input_generated_graph_and_processors_from_file(path: str) -> tuple[nx.Graph, list[int], dict[str, int|list[int]]]:
     """

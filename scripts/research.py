@@ -75,13 +75,18 @@ for input_dir, output_dir in graph_dirs:
                             )
 
 # run simple part
-Parallel(n_jobs=-1)(delayed(greed_partitioner.do_simple_part)(**param) for param in [{key: value for key, value in d.items() if key not in ['seed', 'check_cache', 'steps_back']} for d in params])
+# Parallel(n_jobs=-1)(delayed(greed_partitioner.do_simple_part)(**param) for param in [{key: value for key, value in d.items() if key not in ['seed', 'check_cache', 'steps_back']} for d in params])
+
+for param in [{key: value for key, value in d.items() if key not in ['seed', 'check_cache', 'steps_back']} for d in params]:
+    greed_partitioner.do_simple_part(**param)
 
 # run greed algo
-Parallel(n_jobs=-1)(delayed(greed_partitioner.run_from_paths)(**param) for param in [{key: value for key, value in d.items() if key not in ['steps_back']} for d in params])
+# Parallel(n_jobs=-1)(delayed(greed_partitioner.run_from_paths)(**param) for param in [{key: value for key, value in d.items() if key not in ['steps_back']} for d in params])
+for param in [{key: value for key, value in d.items() if key not in ['steps_back']} for d in params]:
+    greed_partitioner.run_from_paths(**param)
 
 # run mk algo
-Parallel(n_jobs=-1)(delayed(mk_partitioner.do_MK_greed_greed)(**param) for param in params)
+# Parallel(n_jobs=-1)(delayed(mk_partitioner.do_MK_greed_greed)(**param) for param in params)
 
 # run mk algo with greater cr
 # Parallel(n_jobs=10)(delayed(mk_partitioner.do_MK_greed_greed_with_geq_cr)(**param) for param in params)
