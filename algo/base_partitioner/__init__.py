@@ -1,1 +1,1 @@
-from .main import BasePartitioner
+from .main import BasePartitioner, TransitNode

@@ -9,6 +9,40 @@ import networkx as nx
 import metis
 
 
+class TransitNode:
+    def __init__(self, G: nx.Graph, partition: list[int], proc: int) -> None:
+        weight = 0
+        for i in G.nodes:
+            if partition[i] == proc:
+                weight += G.nodes[i]['weight']
+        self.weight = weight
+        
+        in_edges = set()
+        out_edges = set()
+        
+        adj = [list(children.keys()) for node, children in G.adjacency()]
+        
+        for i in G.nodes:
+            if partition[i] == proc:
+                for j in adj[i]:
+                    if partition[j] != proc:
+                        out_edges.add((i, j))
+            else:
+                for j in adj[i]:
+                    if partition[j] == proc:
+                        in_edges.add((i, j))
+                    
+        self.in_edges = in_edges
+        self.out_edges = out_edges
+        
+        self.paths_lengths = {}
+        
+        for i in in_edges:
+            for j in out_edges:
+                ...
+        
+        # TODO
+
 class BasePartitioner:
     def load_metis_part_cache(self, G: nx.Graph, nparts: int, ufactor: int, recursive: bool) -> list[int] | None:
         """
