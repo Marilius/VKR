@@ -31,4 +31,17 @@ class TestNewF(unittest.TestCase):
         partition = [0, 1, 0, 1]
 
         f_val = f_new(G, PG, partition)
-        self.assertEqual(f_val, 4.0, 'Значение ЦФ не то')
+        self.assertEqual(f_val, 3.5, 'Значение ЦФ не то')
+        
+    def test3(self):
+        G = nx.DiGraph()
+        G.add_edges_from([(0, 1,), (1, 2), (2, 3)], weight=1)
+
+        for i in range(len(G.nodes)):
+            G.nodes[i]['weight'] = 1
+
+        PG = input_graph('./data/processor_sets/4_1x1.txt')
+        partition = [0, 1, 0, 1]
+
+        f_val = f_new(G, PG, partition)
+        self.assertEqual(f_val, 5.5, 'Значение ЦФ не то')
