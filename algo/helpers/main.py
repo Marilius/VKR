@@ -8,8 +8,6 @@ from os import makedirs
 from time import sleep
 
 from functools import wraps
-from inspect import signature
-
 
 def get_cache_filename(func_name: str, **kwargs) -> str:
     file_name = []
@@ -43,25 +41,27 @@ def write_cache(func_name: str, partition: list[int] | None, **kwargs) -> None:
             file.write('None')
 
 def add_cache_check(func):
-    @wraps(func)
-    def wrapped(*args, **kwargs) -> list[int] | None:
-        if not kwargs: 
-            raise TypeError('No kwargs given to function')
-        check_cache = kwargs.get('check_cache', False)
-        if check_cache:
-            partition = load_cache(func.__name__, *args, **kwargs)
-            G = kwargs['G']
-            cr_max = kwargs['cr_max']
-            if partition and len(partition) == len(G.nodes) and check_cut_ratio(G, partition, cr_max):
-                return partition
+    def f(check_cache: bool):
+        @wraps(func)
+        def wrapped(**kwargs) -> list[int] | None:
+            if not kwargs: 
+                raise TypeError('No kwargs given to function')
+            if check_cache:
+                partition = load_cache(func.__name__, **kwargs)
+                G = kwargs['G']
+                cr_max = kwargs['cr_max']
+                if partition and len(partition) == len(G.nodes) and check_cut_ratio(G, partition, cr_max):
+                    return partition
 
-        partition = func(*args, **kwargs)
+            partition = func(**kwargs)
 
-        if check_cache:
-            write_cache(func.__name__, partition, *args, **kwargs)
-            
-        return partition
-    return wrapped
+            if check_cache:
+                write_cache(func.__name__, partition, **kwargs)
+                
+            return partition
+
+        return wrapped
+    return f
 
 def check_cut_ratio(G: nx.Graph | None, partition: list[int] | None, cr_max: float) -> bool:
     """
@@ -81,8 +81,56 @@ def check_cut_ratio(G: nx.Graph | None, partition: list[int] | None, cr_max: flo
 
     return calc_cut_ratio(G, partition) <= cr_max  # type: ignore
 
-def f_new() -> float:
-    ...
+def dfs(node: int, G: nx.DiGraph, PG: nx.Graph, partition: list[int], dp, vis):
+    # Mark as visited 
+    vis[node] = True
+    adj = [list(children.keys()) for node, children in G.adjacency()]
+    # Traverse for all its children 
+    for i in range(0, len(adj[node])):
+        # If not visited 
+        if not vis[adj[node][i]]:
+            dfs(adj[node][i], G, PG, partition, dp, vis)
+
+        # Store the max of the paths
+        node_w = G.nodes[node]['weight']/PG.nodes[partition[node]]['weight']
+        # print('node', adj[node][i], node_w)
+        edge_w = 0 if partition[node] == partition[adj[node][i]] else G.get_edge_data(node, adj[node][i])["weight"]
+        # print('edge', node, adj[node][i], edge_w)
+        dp[node] = max(dp[node], dp[adj[node][i]] + node_w + edge_w)
+        # print(dp)
+        
+def findLongestPath(G: nx.DiGraph, PG: nx.Graph, partition: list[int]) -> int:
+    n = len(G.nodes)
+
+    # Dp array
+    dp = [G.nodes[i]['weight']/PG.nodes[partition[i]]['weight'] for i in range(n)]
+
+    # Visited array to know if the node 
+    # has been visited previously or not 
+    vis = [False] * n
+
+    # Call DFS for every unvisited vertex 
+    for i in range(0, n):
+        if not vis[i]:
+            dfs(i, G, PG, partition, dp, vis)
+
+    return max(dp)
+
+def f_new(G: nx.DiGraph, PG: nx.Graph, partition: list[int] | None) -> float:
+    if partition is None:
+        return 2 * settings.BIG_NUMBER
+
+    p_loads = [0] * len(PG)
+
+    for i in range(len(partition)):
+        p_loads[partition[i]] += G.nodes[i]['weight']
+
+    for i in range(len(PG)):
+        p_loads[i] /= PG.nodes[i]['weight'] 
+
+    cp_length = findLongestPath(G, PG, partition)
+
+    return max(*p_loads, cp_length)
 
 def f(G: nx.Graph | None, PG: nx.Graph, partition: list[int] | None, cr_max: float) -> float:
     """
@@ -249,6 +297,7 @@ def input_generated_graph_and_processors_from_file(path: str) -> tuple[nx.Graph,
     params: dict[str, int|list[int]] = {}
 
     with open(path, 'r') as f:
+        print(path)
         p = list(map(int, f.readline().strip().split()))
         L = int(f.readline())
         min_l, max_l = list(map(int, f.readline().strip().split()))

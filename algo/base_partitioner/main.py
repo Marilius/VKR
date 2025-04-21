@@ -60,7 +60,7 @@ class BasePartitioner:
         with open(path, 'w') as file:
             file.write(' '.join(map(str, partition)))
 
-    def metis_part(self, G: nx.Graph, nparts: int, ufactor: int, check_cache: bool, seed: int | None, recursive: bool | None = True, ) -> tuple[int, list[int]]:
+    def metis_part(self, G: nx.Graph, nparts: int, ufactor: int, check_cache: bool, seed: int | None, recursive: bool | None = True, ) -> list[int]:
         """
         Use METIS to partition a graph.
 
@@ -80,12 +80,12 @@ class BasePartitioner:
             recursive = nparts > 8
 
         if nparts == 1:
-            return (0, [0] * len(G.nodes))
+            return [0] * len(G.nodes)
 
         if check_cache:
             partition = self.load_metis_part_cache(G, nparts, ufactor, recursive)
             if partition:
-                return (calc_edgecut(G, partition), partition)
+                return partition
 
         (edgecuts, partition2parse) = metis.part_graph(G, nparts, objtype='cut', ncuts=10, ufactor=ufactor, recursive=recursive, seed=seed)
         assert len(partition2parse) == len(G.nodes)
@@ -105,7 +105,7 @@ class BasePartitioner:
 
         assert len(partition) == len(G.nodes)
 
-        return (edgecuts, partition)
+        return partition
     
     def load_do_metis_cache(self, G: nx.Graph, nparts: int, recursive: bool, cr_max: float, steps_back: int) -> list[int] | None:
         """
@@ -205,7 +205,7 @@ class BasePartitioner:
 
         ufactor = 1
 
-        (_, partition) = self.metis_part(G, nparts, ufactor, check_cache, seed, recursive)
+        partition = self.metis_part(G, nparts, ufactor, check_cache, seed, recursive)
 
         while not check_cut_ratio(G, partition, cr_max):
             ufactor *= 2
@@ -213,7 +213,7 @@ class BasePartitioner:
             if ufactor > 10e7:
                 return None
 
-            (_, partition) = self.metis_part(G, nparts, ufactor, check_cache, seed, recursive)
+            partition = self.metis_part(G, nparts, ufactor, check_cache, seed, recursive)
 
         ans = partition.copy()
         for _ in range(steps_back):
