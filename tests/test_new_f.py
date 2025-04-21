@@ -1,0 +1,34 @@
+import unittest
+
+from algo.helpers import f_new, input_graph
+
+import networkx as nx
+
+
+class TestNewF(unittest.TestCase):
+
+    def test1(self):
+        G = nx.DiGraph()
+        G.add_edges_from([(0, 1,), (0, 2), (2, 1), (1, 3), (2, 3)], weight=1)
+
+        for i in range(len(G.nodes)):
+            G.nodes[i]['weight'] = 1
+
+        PG = input_graph('./data/processor_sets/4_1x1.txt')
+        partition = [0, 0, 0, 0]
+
+        f_val = f_new(G, PG, partition)
+        self.assertEqual(f_val, 1.0, 'Значение ЦФ не то')
+        
+    def test2(self):
+        G = nx.DiGraph()
+        G.add_edges_from([(0, 1,), (0, 2), (2, 1), (1, 3), (2, 3)], weight=1)
+
+        for i in range(len(G.nodes)):
+            G.nodes[i]['weight'] = 1
+
+        PG = input_graph('./data/processor_sets/4_1x1.txt')
+        partition = [0, 1, 0, 1]
+
+        f_val = f_new(G, PG, partition)
+        self.assertEqual(f_val, 4.0, 'Значение ЦФ не то')
