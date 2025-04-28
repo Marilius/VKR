@@ -2,6 +2,7 @@ from algo.helpers import input_graph, fix_rand_graph_file
 
 from algo.mk.main import MKPartitioner
 from algo.greed.main import GreedPartitioner
+from algo.genetic import GeneticPartitioner
 
 import networkx as nx
 
@@ -9,16 +10,19 @@ from os import listdir
 from os.path import isfile, join
 
 from joblib import Parallel, delayed
+from time import sleep
 
 
 params: list[dict] = []
 
 greed_partitioner: GreedPartitioner = GreedPartitioner()
 mk_partitioner: MKPartitioner = MKPartitioner()
+genetic_partitioner: GeneticPartitioner = GeneticPartitioner()
 
 # graph classes to be run and corresponding output directories
 graph_dirs = [
-    (r'./data/random', r'./results/greed/{}random'),
+    (r'./data/gen_data', r'./results/greed/{}gen_data'),
+    # (r'./data/random', r'./results/greed/{}random'),
     # (r'./data/layered', r'./results/greed/{}layered'),
     # (r'./data/triangle', r'./results/greed/{}triangle'),
 ]
@@ -31,7 +35,7 @@ physical_graph_dirs = [
 cr_list = [1]
 
 for input_dir, output_dir in graph_dirs:
-    graph_names = sorted(listdir(input_dir), key=lambda x: len(input_graph(join(input_dir, x)).nodes))
+    graph_names = sorted(filter(lambda x: x.endswith('.graph'), listdir(input_dir)), key=lambda x: len(input_graph(join(input_dir, x)).nodes))
     for graph_file in graph_names:
         graph_path: str = join(input_dir, graph_file)
         
@@ -77,16 +81,20 @@ for input_dir, output_dir in graph_dirs:
 # run simple part
 # Parallel(n_jobs=-1)(delayed(greed_partitioner.do_simple_part)(**param) for param in [{key: value for key, value in d.items() if key not in ['seed', 'check_cache', 'steps_back']} for d in params])
 
-for param in [{key: value for key, value in d.items() if key not in ['seed', 'check_cache', 'steps_back']} for d in params]:
-    greed_partitioner.do_simple_part(**param)
+# for param in [{key: value for key, value in d.items() if key not in ['seed', 'check_cache', 'steps_back']} for d in params]:
+#     greed_partitioner.do_simple_part(**param)
 
 # run greed algo
 # Parallel(n_jobs=-1)(delayed(greed_partitioner.run_from_paths)(**param) for param in [{key: value for key, value in d.items() if key not in ['steps_back']} for d in params])
-for param in [{key: value for key, value in d.items() if key not in ['steps_back']} for d in params]:
-    greed_partitioner.run_from_paths(**param)
+# for param in [{key: value for key, value in d.items() if key not in ['steps_back']} for d in params]:
+#     greed_partitioner.run_from_paths(**param)
 
 # run mk algo
 # Parallel(n_jobs=-1)(delayed(mk_partitioner.do_MK_greed_greed)(**param) for param in params)
 
 # run mk algo with greater cr
 # Parallel(n_jobs=10)(delayed(mk_partitioner.do_MK_greed_greed_with_geq_cr)(**param) for param in params)
+
+for param in [{key: value for key, value in d.items() if key not in ['steps_back']} for d in params]:
+    genetic_partitioner.do_genetic(**param)
+    # sleep(7)

@@ -12,4 +12,7 @@ from .main import (
     f_new,
     check_cut_ratio,
     add_cache_check,
+    pack_transit_node,
+    findLongestPath,
+    longest_paths_from_source
 )
