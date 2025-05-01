@@ -13,6 +13,7 @@ class TestNewF(unittest.TestCase):
 
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
+            G.nodes[i]['isTransit'] = False
 
         PG = input_graph('./data/processor_sets/4_1x1.txt')
         partition = [1, 1, 1, 1]
@@ -27,6 +28,7 @@ class TestNewF(unittest.TestCase):
 
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
+            G.nodes[i]['isTransit'] = False
 
         PG = input_graph('./data/processor_sets/4_1x1.txt')
         partition = [0, 1, 0, 1]
@@ -52,6 +54,7 @@ class TestNewF(unittest.TestCase):
 
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
+            G.nodes[i]['isTransit'] = False
 
         source = 1
         longest_paths = longest_paths_from_source(G, source)
@@ -63,6 +66,7 @@ class TestNewF(unittest.TestCase):
 
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
+            G.nodes[i]['isTransit'] = False
 
         source = 2
         longest_paths = longest_paths_from_source(G, source)
@@ -74,6 +78,7 @@ class TestNewF(unittest.TestCase):
 
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
+            G.nodes[i]['isTransit'] = False
 
         source = 3
         longest_paths = longest_paths_from_source(G, source)
@@ -98,6 +103,7 @@ class TestNewF(unittest.TestCase):
 
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
+            G.nodes[i]['isTransit'] = False
 
         source = 0
         longest_paths = longest_paths_from_source(G, source)
@@ -122,6 +128,7 @@ class TestNewF(unittest.TestCase):
 
         for w, i in enumerate(range(len(G.nodes))):
             G.nodes[i]['weight'] = w
+            G.nodes[i]['isTransit'] = False
 
         source = 0
         longest_paths = longest_paths_from_source(G, source)

@@ -2,9 +2,6 @@ from algo.helpers import input_graph, calc_cut_ratio, check_cut_ratio
 
 from algo.helpers import f_new as f
 
-from algo.base_partitioner.main import BasePartitioner
-
-
 from deap import creator, base, tools, algorithms
 import networkx as nx
 

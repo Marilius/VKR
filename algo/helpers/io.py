@@ -1,4 +1,4 @@
-from .main import check_cut_ratio, unpack_mk
+from .basics import check_cut_ratio, unpack_mk
 
 import settings
 

@@ -1,11 +1,10 @@
-from .main import ( 
+from .basics import ( 
     calc_edgecut, 
     calc_cut_ratio, 
     unpack_mk, 
     f,
     f_new,
     check_cut_ratio,
-    pack_transit_node,
     findLongestPath,
     longest_paths_from_source
 )
@@ -18,4 +17,9 @@ from .io import (
     input_generated_graph_partition,
     fix_rand_graph_file,
     add_cache_check,
+)
+
+from .transit_node import (
+    pack_transit_node,
+    unpack_transit_node,
 )

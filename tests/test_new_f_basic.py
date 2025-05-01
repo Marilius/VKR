@@ -13,6 +13,7 @@ class TestNewFBasic(unittest.TestCase):
 
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
+            G.nodes[i]['isTransit'] = False
 
         PG = input_graph('./data/processor_sets/4_1x1.txt')
         partition = [0, 0, 0, 0]
@@ -26,6 +27,7 @@ class TestNewFBasic(unittest.TestCase):
 
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
+            G.nodes[i]['isTransit'] = False
 
         PG = input_graph('./data/processor_sets/4_1x1.txt')
         partition = [0, 1, 0, 1]
@@ -39,6 +41,7 @@ class TestNewFBasic(unittest.TestCase):
 
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
+            G.nodes[i]['isTransit'] = False
 
         PG = input_graph('./data/processor_sets/4_1x1.txt')
         partition = [0, 1, 0, 1]
