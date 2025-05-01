@@ -21,7 +21,6 @@ def pack_transit_node(G: nx.MultiDiGraph, partition: list[int], proc: int) -> No
 
     adj: dict[int, dict[int, dict[int, dict[str, int]]]] = {node:nbrsdict for (node, nbrsdict) in G.adjacency()}
 
-    # for i in G.nodes:
     for i in adj:
         if partition[i] == proc:
             for j in adj[i]:
@@ -40,22 +39,13 @@ def pack_transit_node(G: nx.MultiDiGraph, partition: list[int], proc: int) -> No
     # возможно, потом нужно переписать на мультиграф
     inner_graph: nx.DiGraph = nx.DiGraph()
     for u, v, key, w in G.edges(data='weight', keys=True):
-        # print('-->', u, v, key, weight)
         if partition[u] == partition[v] == proc:
             inner_graph.add_edge(u, v, weight=G.edges[u, v, key]['weight'])
 
     for node in G.nodes:
         if partition[node] == proc:
-            print(G.nodes(data=True)[node])
             node_w = G.nodes[node]['weight']
-            
-            if 'initial_id' not in G.nodes(data=True)[node]:
-                print('--->', G.nodes(data=True)[node])
-                print('<--->', partition, '---', len(partition), '---', proc)
-                print('<--->', sorted(list(G.nodes)))
-                print('node: ', node, 'proc:', partition[node])
-                # raise
-            
+
             initial_id = G.nodes[node]['initial_id']
 
             if node not in inner_graph:
@@ -78,7 +68,6 @@ def pack_transit_node(G: nx.MultiDiGraph, partition: list[int], proc: int) -> No
                 paths[(i, j)] = distances[j]
 
     n = len(G.nodes)
-    print('ADDING', n)
     G.add_node(
         n,
         weight=weight,
@@ -91,12 +80,12 @@ def pack_transit_node(G: nx.MultiDiGraph, partition: list[int], proc: int) -> No
         isTransit=True,
     )
 
+    # TODO как-то мониторить айдишники, мб через изначальные...
     for (u, v, k, w) in in_edges:
         G.add_edge(u, n, k, weight=w, prev_in_node=v)
 
     for (u, v, k, w) in out_edges:
         G.add_edge(n, v, k, weight=w, prev_out_node=u)
-        # G.add_edge(n, v, weight=G.edges[u, v]['weight'], prev_out_node=u)
 
     i = 0
     node = 0
