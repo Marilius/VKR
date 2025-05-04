@@ -14,10 +14,13 @@ def pack_transit_node(G: nx.MultiDiGraph, partition: list[int], proc: int) -> No
         if partition[i] == proc:
             weight += G.nodes[i]['weight']
 
-    in_nodes: set[int] = set()
-    out_nodes: set[int] = set()
-    in_edges: set[tuple[int, int, int, int]] = set()
-    out_edges: set[tuple[int, int, int, int]] = set()
+    # cur/init
+    in_nodes: set[tuple[int, int]] = set()
+    out_nodes: set[tuple[int, int]] = set()
+    
+    # cur [i, j, k] + w + initial_edge (tuple[int, int])
+    in_edges: set[tuple[int, int, int, int, tuple[int, int]]] = set()
+    out_edges: set[tuple[int, int, int, int, tuple[int, int]]] = set()
 
     adj: dict[int, dict[int, dict[int, dict[str, typing.Any]]]] = {node:nbrsdict for (node, nbrsdict) in G.adjacency()}
     # print(adj)
@@ -28,20 +31,20 @@ def pack_transit_node(G: nx.MultiDiGraph, partition: list[int], proc: int) -> No
                 if partition[j] != proc:
                     for k in adj[i][j]:
                         # print('--->', j)
-                        out_edges.add((i, j, k, adj[i][j][k]['weight']))
-                        out_nodes.add(i)
-                        # initial_edge: tuple[int, int] = adj[i][j][k]['initial_edge']
+                        # out_nodes.add(i)
+                        initial_edge: tuple[int, int] = adj[i][j][k]['initial_edge']
+                        out_edges.add((i, j, k, adj[i][j][k]['weight'], initial_edge))
                         # out_edges.add((*initial_edge, k, adj[i][j][k]['weight']))
-                        # out_nodes.add(initial_edge[0])
+                        out_nodes.add((i, initial_edge[0]))
         else:
             for j in adj[i]:
                 if partition[j] == proc:
                     for k in adj[i][j]:
-                        in_edges.add((i, j, k, adj[i][j][k]['weight']))
-                        in_nodes.add(j)
-    #                     initial_edge: tuple[int, int] = adj[i][j][k]['initial_edge']
-    #                     in_edges.add((*initial_edge, k, adj[i][j][k]['weight']))
-    #                     in_nodes.add(initial_edge[1])
+                        # in_nodes.add(j)
+                        initial_edge: tuple[int, int] = adj[i][j][k]['initial_edge']
+                        in_edges.add((i, j, k, adj[i][j][k]['weight'], initial_edge))
+                        # in_edges.add((*initial_edge, k, adj[i][j][k]['weight']))
+                        in_nodes.add((j, initial_edge[1]))
     # # возможно, потом нужно переписать на мультиграф
     inner_graph: nx.DiGraph = nx.DiGraph()
     for u, v, key in G.edges(keys=True):
@@ -67,11 +70,12 @@ def pack_transit_node(G: nx.MultiDiGraph, partition: list[int], proc: int) -> No
                 inner_graph.nodes[node]['initial_id'] = initial_id
 
     paths: dict[tuple[int, int], int] = {}
-    for i in in_nodes:
+    for i, init_i in in_nodes:
         distances = longest_paths_from_source(inner_graph, i)
-        for j in out_nodes:
+        paths[(G.nodes[i]['initial_id'], -1)] = max(distances.values())
+        for j, init_j in out_nodes:
             if distances[j] != -1:
-                paths[(G.nodes[i]['initial_id'], G.nodes[j]['initial_id'])] = distances[j]
+                paths[(init_i, init_j)] = distances[j]
 
     n = len(G.nodes)
     G.add_node(
@@ -86,11 +90,13 @@ def pack_transit_node(G: nx.MultiDiGraph, partition: list[int], proc: int) -> No
         isTransit=True,
     )
 
-    for (u, v, k, w) in in_edges:
-        G.add_edge(u, n, weight=w, prev_in_node=v, initial_edge=adj[u][v][k]['initial_edge'])
+    for (u, v, k, w, initial_edge) in in_edges:
+        # G.add_edge(u, n, weight=w, prev_in_node=v, initial_edge=adj[u][v][k]['initial_edge'])
+        G.add_edge(u, n, weight=w, prev_in_node=v, initial_edge=initial_edge)
 
-    for (u, v, k, w) in out_edges:
-        G.add_edge(n, v, weight=w, prev_out_node=u, initial_edge=adj[u][v][k]['initial_edge'])
+    for (u, v, k, w, initial_edge) in out_edges:
+        # G.add_edge(n, v, weight=w, prev_out_node=u, initial_edge=adj[u][v][k]['initial_edge'])
+        G.add_edge(n, v, weight=w, prev_out_node=u, initial_edge=initial_edge)
 
     i = 0
     node = 0
