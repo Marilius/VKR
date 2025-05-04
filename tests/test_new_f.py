@@ -180,43 +180,41 @@ class TestNewF(unittest.TestCase):
         cp = findLongestPath(G, PG, partition)
         self.assertEqual(cp, 5.5, 'Неправильное значение длительности критического пути')
 
-    # def test_f_new_with_transit_node7(self):
-    #     G = nx.MultiDiGraph()
+    def test_f_new_with_transit_node7(self):
+        G = nx.MultiDiGraph()
 
-    #     edges = [(0, 1), (0, 2), (3, 2), (1, 7), (2, 4), (4, 7), (4, 5), (4, 6), (7, 5), (5, 6), (7, 6), (8, 0)]
-    #     for u, v in edges:
-    #         G.add_edge(u, v, weight=1, initial_edge=(u, v))
+        edges = [(0, 1), (0, 2), (3, 2), (1, 7), (2, 4), (4, 7), (4, 5), (4, 6), (7, 5), (5, 6), (7, 6), (8, 0)]
+        for u, v in edges:
+            G.add_edge(u, v, weight=1, initial_edge=(u, v))
 
-    #     for i in range(len(G.nodes)):
-    #         G.nodes[i]['weight'] = 1
-    #         G.nodes[i]['initial_id'] = i
-    #         G.nodes[i]['isTransit'] = False
+        for i in range(len(G.nodes)):
+            G.nodes[i]['weight'] = 1
+            G.nodes[i]['initial_id'] = i
+            G.nodes[i]['isTransit'] = False
 
-    #     PG = input_graph('./data/processor_sets/4_1x1.txt')
-    #     partition = [0, 0, 0, 0, 1, 1, 1, 1, 0]
+        PG = input_graph('./data/processor_sets/4_1x1.txt')
+        partition = [0, 0, 0, 0, 1, 1, 1, 1, 0]
 
-    #     f_val_1 = f_new(G, PG, partition)
-        
+        f_val_1 = f_new(G, PG, partition)
 
-    #     partition[-1] = 2
-    #     proc = 0
-    #     pack_transit_node(G, partition, proc)
-    #     partition[partition.index(2)] = 0
-        
-    #     proc = 1
-    #     pack_transit_node(G, partition, proc)
+        partition[-1] = 2
+        proc = 0
+        pack_transit_node(G, partition, proc)
+        partition[partition.index(2)] = 0
 
-    #     self.assertEqual(partition, [0, 0, 1], 'Не то разбиение после запаковки')
-    #     # print(G.nodes(data=True)[1])
-    #     # print(G.nodes(data=True)[2])
+        proc = 1
+        pack_transit_node(G, partition, proc)
 
-    #     f_val_2 = f_new(G, PG, partition)
+        self.assertEqual(partition, [0, 0, 1], 'Не то разбиение после запаковки')
+        # print(G.nodes(data=True)[1])
+        # print(G.nodes(data=True)[2])
 
+        f_val_2 = f_new(G, PG, partition)
 
-    #     self.assertEqual(G.nodes[0]['weight'], 4, 'Не тот вес транзитной ноды (не совпадает с суммой весов внутренних вершин)')
-    #     self.assertEqual(G.nodes[1]['weight'], 4, 'Не тот вес транзитной ноды (не совпадает с суммой весов внутренних вершин)')
+        self.assertEqual(G.nodes[1]['weight'], 4, 'Не тот вес транзитной ноды (не совпадает с суммой весов внутренних вершин)')
+        self.assertEqual(G.nodes[2]['weight'], 4, 'Не тот вес транзитной ноды (не совпадает с суммой весов внутренних вершин)')
 
-    #     self.assertEqual(f_val_1, f_val_2, 'Значения ЦФ до и после запаковки не совпадают')
-    #     self.assertEqual(f_val_1, 5.5, 'Неправильное значение ЦФ')
-    #     cp = findLongestPath(G, PG, partition)
-    #     self.assertEqual(cp, 5.5, 'Неправильное значение длительности критического пути')
+        self.assertEqual(f_val_1, f_val_2, 'Значения ЦФ до и после запаковки не совпадают')
+        self.assertEqual(f_val_1, 5.75, 'Неправильное значение ЦФ')
+        cp = findLongestPath(G, PG, partition)
+        self.assertEqual(cp, 5.75, 'Неправильное значение длительности критического пути')

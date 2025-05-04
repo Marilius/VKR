@@ -82,11 +82,14 @@ def dfs(
                     if (init_in_node, initial_edge[0]) not in G.nodes[node]['paths']:
                         continue
 
-                    node_w = G.nodes[node]['paths'][(init_in_node, initial_edge[0])]
-                    new_val = dp[child][initial_edge[0]] + node_w + edge_w
+                    node_w = G.nodes[node]['paths'][(init_in_node, initial_edge[0])] / PG.nodes[partition[node]]['weight']
+                    # print(dp[child])
+                    # print(initial_edge)
+                    new_val = dp[child][initial_edge[1]] + node_w + edge_w
                     
+                    # print(init_in_node, initial_edge[1], '===')
                     if new_val > dp[node][init_in_node]:
-                        dp[node][initial_edge[1]] = new_val
+                        dp[node][init_in_node] = new_val
                     
                 if 'reversed_inner_graph' not in G.nodes[node]:
                     G.nodes[node]['reversed_inner_graph'] = G.nodes[node]['inner_graph'].reverse()
