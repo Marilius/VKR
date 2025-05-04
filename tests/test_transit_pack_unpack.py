@@ -1,6 +1,6 @@
 import unittest
 
-from algo.helpers import pack_transit_node, unpack_transit_node
+from algo.helpers import pack_transit_node, unpack_transit_partition
 
 import networkx as nx
 from copy import deepcopy
@@ -10,7 +10,10 @@ class TestTransitPackUnpack(unittest.TestCase):
 
     def test1(self):
         G = nx.MultiDiGraph()
-        G.add_edges_from([(0, 1), (1, 2), (2, 3)], weight=1)
+
+        edges = [(0, 1), (1, 2), (2, 3)]
+        for (u, v) in edges:
+            G.add_edge(u, v, weight=1, initial_edge=(u, v))
 
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
@@ -23,7 +26,7 @@ class TestTransitPackUnpack(unittest.TestCase):
         pack_transit_node(G, partition, 0)
         pack_transit_node(G, partition, 1)
 
-        partition = unpack_transit_node(G, partition)
+        partition = unpack_transit_partition(G, partition)
 
         self.assertEqual(partition_initial, partition, 'разбиения до и после распаковки не совпадают')
 
@@ -45,7 +48,7 @@ class TestTransitPackUnpack(unittest.TestCase):
         for proc in range(5):
             pack_transit_node(G, partition, proc)
 
-        partition = unpack_transit_node(G, partition)
+        partition = unpack_transit_partition(G, partition)
 
         self.assertEqual(partition_initial, partition, 'разбиения до и после распаковки не совпадают')
 
@@ -67,7 +70,7 @@ class TestTransitPackUnpack(unittest.TestCase):
         for proc in range(5):
             pack_transit_node(G, partition, proc)
 
-        partition = unpack_transit_node(G, partition)
+        partition = unpack_transit_partition(G, partition)
 
         self.assertEqual(partition_initial, partition, 'разбиения до и после распаковки не совпадают')
 
@@ -88,9 +91,9 @@ class TestTransitPackUnpack(unittest.TestCase):
 
         for proc in range(5):
             pack_transit_node(G, partition, proc)
-            print(sorted(list(G.nodes)))
+            # print(sorted(list(G.nodes)))
 
-        partition = unpack_transit_node(G, partition)
+        partition = unpack_transit_partition(G, partition)
 
         self.assertEqual(partition_initial, partition, 'разбиения до и после распаковки не совпадают')
 
@@ -112,6 +115,6 @@ class TestTransitPackUnpack(unittest.TestCase):
         for proc in range(10):
             pack_transit_node(G, partition, proc)
         
-        partition = unpack_transit_node(G, partition)
+        partition = unpack_transit_partition(G, partition)
 
         self.assertEqual(partition_initial, partition, 'разбиения до и после распаковки не совпадают')

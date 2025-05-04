@@ -2,6 +2,8 @@ import settings
 
 import networkx as nx
 
+import typing
+
 
 def longest_paths_from_source(G: nx.DiGraph, source: int) -> dict[int, int]:
     # TODO именно пути?
@@ -11,14 +13,14 @@ def longest_paths_from_source(G: nx.DiGraph, source: int) -> dict[int, int]:
     dist = { node:-1 for node in G.nodes }
 
     stack.append(source)
-    dist[source] = 0
+    dist[source] = G.nodes[source]['weight']
 
     while stack: 
         u = stack.pop()
 
         if dist[u] != -1: 
-            for i in adj[u]: 
-                if (dist[i] < dist[u] + G.nodes[i]['weight']): 
+            for i in adj[u]:
+                if (dist[i] < dist[u] + G.nodes[i]['weight']):
                     dist[i] = dist[u] + G.nodes[i]['weight']
                     stack.append(i)
 
@@ -50,36 +52,56 @@ def dfs(
         dp: list[float],
         vis: list[bool],
         best_paths: list[list[int]],
-        adj: dict[int, dict[int, dict[int, dict[str, int]]]],
+        adj: dict[int, dict[int, dict[int, dict[str, typing.Any]]]],
     ) -> None:
-    # Mark as visited 
-    vis[node] = True
     # adj:  = [list(children.keys()) for node, children in G.adjacency()]
     # Traverse for all its children 
+    
+    # Mark as visited 
+    vis[node] = True
+    
     for child in adj[node]:
-        node_w = G.nodes[node]['weight'] / PG.nodes[partition[node]]['weight']
-        if G.nodes[node]['isTransit']:  # TODO
-            print(G.nodes[node]['paths'])
-            print(node, child)
-            node_w = G.nodes[node]['paths'][()] # нужен не вес самой ноды, а самого длинного пути внутри
+            
         if not vis[child]:
             # If not visited 
             dfs(child, G, PG, partition, dp, vis, best_paths, adj)
 
-        for edge_key in adj[node][child]:
-            # Store the max of the paths
-            edge_w = 0 if partition[node] == partition[child] else G.get_edge_data(node, child, edge_key)["weight"]
-            new_val = dp[child] + node_w + edge_w
+        if G.nodes[node]['isTransit']:  # TODO
+            print('paths', G.nodes[node]['paths'])
+            print(node, child)
+            
+            for edge_key in adj[node][child]:
+                initial_edge: tuple[int, int] = adj[node][child][edge_key]['initial_edge']
+                print(node, child, edge_key, 'initial_edge', initial_edge, adj[node][child][edge_key])
+                
+                node_w = max(map(lambda x: x[1], filter(lambda x: x[0][1] == initial_edge[0], G.nodes[node]['paths'].items())))
+                node_w = max(map(lambda x: x[1], filter(lambda x: x[0][1] == initial_edge[0], G.nodes[node]['paths'].items())))
+                edge_w = 0 if partition[node] == partition[child] else G.get_edge_data(node, child, edge_key)["weight"]
+                new_val = dp[child] + node_w + edge_w
+                
+                if new_val > dp[node]:
+                    dp[node] = new_val
+                    best_paths[node] = [node] + best_paths[child]  # Обновляем путь
+        else:
+            for edge_key in adj[node][child]:
+                node_w = G.nodes[node]['weight'] / PG.nodes[partition[node]]['weight']
+                # Store the max of the paths
+                edge_w = 0 if partition[node] == partition[child] else G.get_edge_data(node, child, edge_key)["weight"]
+                new_val = dp[child] + node_w + edge_w
 
-            if new_val > dp[node]:
-                dp[node] = new_val
-                best_paths[node] = [node] + best_paths[child]  # Обновляем путь
+                if new_val > dp[node]:
+                    dp[node] = new_val
+                    best_paths[node] = [node] + best_paths[child]  # Обновляем путь
 
 def findLongestPath(G: nx.MultiDiGraph, PG: nx.Graph, partition: list[int]) -> tuple[float, list[int]]:
     n = len(G.nodes)
 
     # Dp array
-    dp = [G.nodes[i]['weight']/PG.nodes[partition[i]]['weight'] for i in range(n)]
+    dp = [
+        max(G.nodes[i]['paths'].values()) if G.nodes[i]['isTransit']
+        else G.nodes[i]['weight']/PG.nodes[partition[i]]['weight']
+        for i in range(n)
+    ]
     best_paths: list[list[int]] = [[node] for node in G.nodes]  # Изначально путь до каждой вершины — только она сама
     adj: dict[int, dict[int, dict[int, dict[str, int]]]] = {node:nbrsdict for (node, nbrsdict) in G.adjacency()}
 
@@ -91,6 +113,7 @@ def findLongestPath(G: nx.MultiDiGraph, PG: nx.Graph, partition: list[int]) -> t
     for i in range(0, n):
         if not vis[i]:
             dfs(i, G, PG, partition, dp, vis, best_paths, adj)
+            print('dp', dp)
 
     max_val = max(dp)
     max_idx = dp.index(max_val)

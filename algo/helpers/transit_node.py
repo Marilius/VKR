@@ -1,5 +1,5 @@
 import networkx as nx
-
+import typing
 
 from .basics import longest_paths_from_source
 
@@ -19,7 +19,8 @@ def pack_transit_node(G: nx.MultiDiGraph, partition: list[int], proc: int) -> No
     in_edges: set[tuple[int, int, int, int]] = set()
     out_edges: set[tuple[int, int, int, int]] = set()
 
-    adj: dict[int, dict[int, dict[int, dict[str, int]]]] = {node:nbrsdict for (node, nbrsdict) in G.adjacency()}
+    adj: dict[int, dict[int, dict[int, dict[str, typing.Any]]]] = {node:nbrsdict for (node, nbrsdict) in G.adjacency()}
+    # print(adj)
 
     for i in adj:
         if partition[i] == proc:
@@ -29,18 +30,23 @@ def pack_transit_node(G: nx.MultiDiGraph, partition: list[int], proc: int) -> No
                         # print('--->', j)
                         out_edges.add((i, j, k, adj[i][j][k]['weight']))
                         out_nodes.add(i)
+                        # initial_edge: tuple[int, int] = adj[i][j][k]['initial_edge']
+                        # out_edges.add((*initial_edge, k, adj[i][j][k]['weight']))
+                        # out_nodes.add(initial_edge[0])
         else:
             for j in adj[i]:
                 if partition[j] == proc:
                     for k in adj[i][j]:
                         in_edges.add((i, j, k, adj[i][j][k]['weight']))
                         in_nodes.add(j)
-
-    # возможно, потом нужно переписать на мультиграф
+    #                     initial_edge: tuple[int, int] = adj[i][j][k]['initial_edge']
+    #                     in_edges.add((*initial_edge, k, adj[i][j][k]['weight']))
+    #                     in_nodes.add(initial_edge[1])
+    # # возможно, потом нужно переписать на мультиграф
     inner_graph: nx.DiGraph = nx.DiGraph()
-    for u, v, key, w in G.edges(data='weight', keys=True):
+    for u, v, key in G.edges(keys=True):
         if partition[u] == partition[v] == proc:
-            inner_graph.add_edge(u, v, weight=G.edges[u, v, key]['weight'])
+            inner_graph.add_edge(u, v, weight=G.edges[u, v, key]['weight'], initial_edge=G.edges[u, v, key]['initial_edge'])
 
     for node in G.nodes:
         if partition[node] == proc:
@@ -65,7 +71,7 @@ def pack_transit_node(G: nx.MultiDiGraph, partition: list[int], proc: int) -> No
         distances = longest_paths_from_source(inner_graph, i)
         for j in out_nodes:
             if distances[j] != -1:
-                paths[(i, j)] = distances[j]
+                paths[(G.nodes[i]['initial_id'], G.nodes[j]['initial_id'])] = distances[j]
 
     n = len(G.nodes)
     G.add_node(
@@ -80,12 +86,11 @@ def pack_transit_node(G: nx.MultiDiGraph, partition: list[int], proc: int) -> No
         isTransit=True,
     )
 
-    # TODO как-то мониторить айдишники, мб через изначальные...
     for (u, v, k, w) in in_edges:
-        G.add_edge(u, n, k, weight=w, prev_in_node=v)
+        G.add_edge(u, n, weight=w, prev_in_node=v, initial_edge=adj[u][v][k]['initial_edge'])
 
     for (u, v, k, w) in out_edges:
-        G.add_edge(n, v, k, weight=w, prev_out_node=u)
+        G.add_edge(n, v, weight=w, prev_out_node=u, initial_edge=adj[u][v][k]['initial_edge'])
 
     i = 0
     node = 0
@@ -101,14 +106,14 @@ def pack_transit_node(G: nx.MultiDiGraph, partition: list[int], proc: int) -> No
 
     mapping: dict[int, int] = dict(zip(sorted(list(G.nodes)), range(len(G.nodes))))
     nx.relabel_nodes(G, mapping, copy=False)
-    for prev_label, new_label in mapping.items():
-        if 'prev_labels' in G.nodes[new_label]:
-            G.nodes[new_label]['prev_labels'].append(prev_label)
-        else:
-            G.nodes[new_label]['prev_labels'] = [prev_label]
+    # for prev_label, new_label in mapping.items():
+    #     if 'prev_labels' in G.nodes[new_label]:
+    #         G.nodes[new_label]['prev_labels'].append(prev_label)
+    #     else:
+    #         G.nodes[new_label]['prev_labels'] = [prev_label]
     # TODO
-    
-def unpack_transit_node(G: nx.DiGraph, partition: list[int]) -> list[int]:
+
+def unpack_transit_partition(G: nx.DiGraph, partition: list[int]) -> list[int]:
     unpacked_partition_d: dict[int, int] = dict()
 
     for node in G.nodes:

@@ -21,5 +21,5 @@ from .io import (
 
 from .transit_node import (
     pack_transit_node,
-    unpack_transit_node,
+    unpack_transit_partition,
 )

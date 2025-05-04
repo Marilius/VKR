@@ -46,7 +46,7 @@ class TestNewF(unittest.TestCase):
 
         source = 0
         longest_paths = longest_paths_from_source(G, source)
-        self.assertEqual(longest_paths, {0:0, 1:1, 2:2, 3:3}, 'Неправильнык длины путей')
+        self.assertEqual(longest_paths, {0:1, 1:2, 2:3, 3:4}, 'Неправильнык длины путей')
 
     def test_longest_path_from_source2(self):
         G = nx.MultiDiGraph()
@@ -58,7 +58,7 @@ class TestNewF(unittest.TestCase):
 
         source = 1
         longest_paths = longest_paths_from_source(G, source)
-        self.assertEqual(longest_paths, {0:-1, 1:0, 2:1, 3:2}, 'Неправильные длины путей')
+        self.assertEqual(longest_paths, {0:-1, 1:1, 2:2, 3:3}, 'Неправильные длины путей')
         
     def test_longest_path_from_source3(self):
         G = nx.MultiDiGraph()
@@ -70,7 +70,7 @@ class TestNewF(unittest.TestCase):
 
         source = 2
         longest_paths = longest_paths_from_source(G, source)
-        self.assertEqual(longest_paths, {0:-1, 1:-1, 2:0, 3:1}, 'Неправильные длины путей')
+        self.assertEqual(longest_paths, {0:-1, 1:-1, 2:1, 3:2}, 'Неправильные длины путей')
         
     def test_longest_path_from_source4(self):
         G = nx.MultiDiGraph()
@@ -82,7 +82,7 @@ class TestNewF(unittest.TestCase):
 
         source = 3
         longest_paths = longest_paths_from_source(G, source)
-        self.assertEqual(longest_paths, {0:-1, 1:-1, 2:-1, 3:0}, 'Неправильные длины путей')
+        self.assertEqual(longest_paths, { 0:-1, 1:-1, 2:-1, 3:1 }, 'Неправильные длины путей')
 
     def test_longest_path_from_source5(self):
         G = nx.MultiDiGraph()
@@ -107,7 +107,7 @@ class TestNewF(unittest.TestCase):
 
         source = 0
         longest_paths = longest_paths_from_source(G, source)
-        self.assertEqual(longest_paths, {0:0, 1:1, 2:2, 3:2, 4:3, 5:4, 6:4, 7:5}, 'Неправильные длины путей')
+        self.assertEqual(longest_paths, { 0:1, 1:2, 2:3, 3:3, 4:4, 5:5, 6:5, 7:6 }, 'Неправильные длины путей')
 
     def test_longest_path_from_source6(self):
         G = nx.MultiDiGraph()
