@@ -18,9 +18,9 @@ class TestNewF(unittest.TestCase):
         PG = input_graph('./data/processor_sets/4_1x1.txt')
         partition = [1, 1, 1, 1]
 
-        cp_length, cp = findLongestPath(G, PG, partition)
+        cp_length = findLongestPath(G, PG, partition)
         self.assertEqual(cp_length, 4, 'Значение ЦФ не то')
-        self.assertEqual(cp, [0, 1, 2, 3], 'Не тот критический путь')
+        # self.assertEqual(cp, [0, 1, 2, 3], 'Не тот критический путь')
 
     def test_cp_2(self):
         G = nx.MultiDiGraph()
@@ -33,9 +33,9 @@ class TestNewF(unittest.TestCase):
         PG = input_graph('./data/processor_sets/4_1x1.txt')
         partition = [0, 1, 0, 1]
 
-        cp_length, cp = findLongestPath(G, PG, partition)
+        cp_length = findLongestPath(G, PG, partition)
         self.assertEqual(cp_length, 3.5, 'Значение ЦФ не то')
-        self.assertEqual(cp, [0, 2, 1, 3], 'Не тот критический путь')
+        # self.assertEqual(cp, [0, 2, 1, 3], 'Не тот критический путь')
 
     def test_longest_path_from_source1(self):
         G = nx.MultiDiGraph()
