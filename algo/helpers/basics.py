@@ -14,6 +14,7 @@ def longest_paths_from_source(G: nx.DiGraph, source: int) -> dict[int, int]:
 
     stack.append(source)
     # print(dist, source)
+    # print(G.nodes)
     dist[source] = G.nodes[source]['weight']
 
     while stack: 
@@ -96,7 +97,7 @@ def dfs(
 
                 reversed_inner_graph = G.nodes[node]['reversed_inner_graph']
                 for i, init_i in G.nodes[node]['out_nodes']:
-                    distances = longest_paths_from_source(reversed_inner_graph, init_i)
+                    distances = longest_paths_from_source(reversed_inner_graph, i)
                     # print(child)
                     # print('&&&&&', dp)
                     # print(dp[child])
@@ -121,7 +122,7 @@ def dfs(
                     if (init_in_node, initial_edge[0]) not in G.nodes[node]['paths']:
                         continue
 
-                    node_w = G.nodes[node]['paths'][(init_in_node, initial_edge[0])]
+                    node_w = G.nodes[node]['paths'][(init_in_node, initial_edge[0])] / PG.nodes[partition[node]]['weight']
                     new_val = dp[child] + node_w + edge_w
                     
                     if new_val > dp[node][init_in_node]:
@@ -174,7 +175,7 @@ def findLongestPath(G: nx.MultiDiGraph, PG: nx.Graph, partition: list[int]) -> f
                         continue
                     m = max(m, v)
                 
-                d[init_in_node] = m
+                d[init_in_node] = m / PG.nodes[partition[i]]['weight']
             dp.append(d)
         else:
             dp.append( G.nodes[i]['weight']/PG.nodes[partition[i]]['weight'] )
@@ -209,8 +210,8 @@ def findLongestPath(G: nx.MultiDiGraph, PG: nx.Graph, partition: list[int]) -> f
             dp_values.append(m)
     
     max_val = max(dp_values)
-    # print('dp', dp)
-    # print('dp_values', dp_values)
+    print('dp', dp)
+    print('dp_values', dp_values)
     # max_idx = dp.index(max_val)
 
     return max_val
