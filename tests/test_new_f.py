@@ -18,7 +18,6 @@ class TestNewF(unittest.TestCase):
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
             G.nodes[i]['initial_id'] = i
-            G.nodes[i]['isTransit'] = False
 
         PG = input_graph('./data/processor_sets/4_1x1.txt')
         partition = [0, 1, 1, 0]
@@ -40,7 +39,6 @@ class TestNewF(unittest.TestCase):
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
             G.nodes[i]['initial_id'] = i
-            G.nodes[i]['isTransit'] = False
 
         PG = input_graph('./data/processor_sets/4_1x1.txt')
         partition = [0, 1, 1, 1, 0, 1, 0, 0]
@@ -62,7 +60,6 @@ class TestNewF(unittest.TestCase):
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
             G.nodes[i]['initial_id'] = i
-            G.nodes[i]['isTransit'] = False
 
         PG = input_graph('./data/processor_sets/4_1x1.txt')
         partition = [0, 1, 1, 1, 0, 1, 0, 0]
@@ -84,7 +81,6 @@ class TestNewF(unittest.TestCase):
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
             G.nodes[i]['initial_id'] = i
-            G.nodes[i]['isTransit'] = False
 
         PG = input_graph('./data/processor_sets/4_1x1.txt')
         partition = [0, 1, 1, 1, 0, 1, 0, 0, 0, 0]
@@ -106,7 +102,6 @@ class TestNewF(unittest.TestCase):
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
             G.nodes[i]['initial_id'] = i
-            G.nodes[i]['isTransit'] = False
 
         PG = input_graph('./data/processor_sets/4_1x1.txt')
         partition = [0, 1, 1, 0, 0, 1, 1, 0, 1, 0]
@@ -131,7 +126,6 @@ class TestNewF(unittest.TestCase):
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
             G.nodes[i]['initial_id'] = i
-            G.nodes[i]['isTransit'] = False
 
         PG = input_graph('./data/processor_sets/4_1x1.txt')
         partition = [0, 0, 0, 0, 1, 1, 1, 1]
@@ -156,7 +150,6 @@ class TestNewF(unittest.TestCase):
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
             G.nodes[i]['initial_id'] = i
-            G.nodes[i]['isTransit'] = False
 
         PG = input_graph('./data/processor_sets/4_1x1.txt')
         partition = [0, 0, 0, 0, 1, 1, 1, 1, 0]
@@ -191,7 +184,6 @@ class TestNewF(unittest.TestCase):
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
             G.nodes[i]['initial_id'] = i
-            G.nodes[i]['isTransit'] = False
 
         PG = input_graph('./data/processor_sets/4_1x2.txt')
         partition = [
@@ -231,7 +223,6 @@ class TestNewF(unittest.TestCase):
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
             G.nodes[i]['initial_id'] = i
-            G.nodes[i]['isTransit'] = False
 
         PG = input_graph('./data/processor_sets/4_1x2.txt')
         partition = [
@@ -264,7 +255,6 @@ class TestNewF(unittest.TestCase):
         for i in range(len(G.nodes)):
             G.nodes[i]['weight'] = 1
             G.nodes[i]['initial_id'] = i
-            G.nodes[i]['isTransit'] = False
 
         PG = input_graph('./data/processor_sets/4_1x1.txt')
         partition = [

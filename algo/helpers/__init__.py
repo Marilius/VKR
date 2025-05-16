@@ -20,7 +20,6 @@ from .io import (
 )
 
 from .transit_graph import (
-    pack_transit_node,
     unpack_transit_partition,
     create_transit_graph,
 )
