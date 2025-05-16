@@ -6,7 +6,6 @@ import typing
 
 
 def longest_paths_from_source(G: nx.DiGraph, source: int) -> dict[int, int]:
-    # TODO именно пути?
     stack: list[int] = []
     adj: dict[int, list[int]] = {node:list(children.keys()) for (node, children) in G.adjacency()}
 
@@ -15,7 +14,10 @@ def longest_paths_from_source(G: nx.DiGraph, source: int) -> dict[int, int]:
     stack.append(source)
     # print(dist, source)
     # print(G.nodes)
-    dist[source] = G.nodes[source]['weight']
+    # print('<>', G.nodes(data=True))
+    
+    # dist[source] = G.nodes[source]['weight']
+    dist[source] = 0
 
     while stack: 
         u = stack.pop()
@@ -25,6 +27,10 @@ def longest_paths_from_source(G: nx.DiGraph, source: int) -> dict[int, int]:
                 if (dist[i] < dist[u] + G.nodes[i]['weight']):
                     dist[i] = dist[u] + G.nodes[i]['weight']
                     stack.append(i)
+                    
+    for node in dist:
+        if node != source:
+            dist[node] -= G.nodes[node]['weight']
 
     return dist
 
@@ -47,143 +53,50 @@ def check_cut_ratio(G: nx.Graph | None, partition: list[int] | None, cr_max: flo
     return calc_cut_ratio(G, partition) <= cr_max  # type: ignore
 
 def dfs(
-        node: int,
-        G: nx.MultiDiGraph,
-        PG: nx.Graph,
-        partition: list[int],
-        dp: list[float | dict[int, float]],
-        vis: list[bool],
-        best_paths: list[list[int]],
-        adj: dict[int, dict[int, dict[int, dict[str, typing.Any]]]],
-    ) -> None:
-    # adj:  = [list(children.keys()) for node, children in G.adjacency()]
-    # Traverse for all its children 
-
+    node: int,
+    G: nx.DiGraph,
+    PG: nx.Graph,
+    partition: list[int],
+    dp: list[float],
+    vis: list[bool],
+    best_paths: list[list[int]],
+    adj: dict[int, dict[int, dict[str, typing.Any]]],
+    node_to_subgraph: dict[int, int] | None = None,
+) -> None:
     # Mark as visited 
     vis[node] = True
-    node_isTransit: bool = G.nodes[node]['isTransit']
-
-    # print('dfs dp', dp)
+    node_w = G.nodes[node]['weight'] / PG.nodes[partition[node]]['weight']
 
     for child in adj[node]:
-        child_isTransit: bool = G.nodes[child]['isTransit']
-
         if not vis[child]:
             # If not visited 
-            dfs(child, G, PG, partition, dp, vis, best_paths, adj)
+            dfs(child, G, PG, partition, dp, vis, best_paths, adj, node_to_subgraph)
 
-        if node_isTransit and child_isTransit:
-            for edge_key in adj[node][child]:
-                initial_edge: tuple[int, int] = adj[node][child][edge_key]['initial_edge']
+        edge_w = 0 if partition[node] == partition[child] else G.get_edge_data(node, child)['weight']
+        if node_to_subgraph is not None:
+            if node_to_subgraph[node] == node_to_subgraph[child]:
+                assert partition[node] == partition[child]
+                edge_w = G.get_edge_data(node, child)["weight"]/PG.nodes[partition[node]]['weight']
 
-                edge_w = 0 if partition[node] == partition[child] else G.get_edge_data(node, child, edge_key)["weight"]
-                
-                for (in_node, init_in_node) in G.nodes[node]['in_nodes']:
-                    # print('paths', G.nodes[node]['paths'])
-                    if (init_in_node, initial_edge[0]) not in G.nodes[node]['paths']:
-                        continue
+        new_val = dp[child] + node_w + edge_w
 
-                    node_w = G.nodes[node]['paths'][(init_in_node, initial_edge[0])] / PG.nodes[partition[node]]['weight']
-                    # print(dp[child])
-                    # print(initial_edge)
-                    new_val = dp[child][initial_edge[1]] + node_w + edge_w
-                    
-                    # print(init_in_node, initial_edge[1], '===')
-                    if new_val > dp[node][init_in_node]:
-                        dp[node][init_in_node] = new_val
-                    
-                if 'reversed_inner_graph' not in G.nodes[node]:
-                    G.nodes[node]['reversed_inner_graph'] = G.nodes[node]['inner_graph'].reverse()
+        if new_val > dp[node]:
+            dp[node] = new_val
+            # best_paths[node] = [node] + best_paths[child]  # Обновляем путь
 
-                reversed_inner_graph = G.nodes[node]['reversed_inner_graph']
-                for i, init_i in G.nodes[node]['out_nodes']:
-                    distances = longest_paths_from_source(reversed_inner_graph, i)
-                    # print(child)
-                    # print('&&&&&', dp)
-                    # print(dp[child])
-                    node_w = max(distances.values()) / PG.nodes[partition[node]]['weight']
-                    new_val = node_w + edge_w + dp[child][initial_edge[1]]
-                    # print(node_w, edge_w, dp[child][initial_edge[1]])
-                    # print('distances', distances)
-                    if -1 not in dp[node] or new_val > dp[node][-1]:
-                        dp[node][-1] = new_val
-                    
-                # if new_val > dp[node][initial_edge[0]]:
-                #     dp[node][initial_edge[0]] = new_val
-                    # best_paths[node] = [node] + best_paths[child]  # Обновляем путь
-
-        elif node_isTransit and not child_isTransit:
-            for edge_key in adj[node][child]:
-                initial_edge: tuple[int, int] = adj[node][child][edge_key]['initial_edge']
-
-                edge_w = 0 if partition[node] == partition[child] else G.get_edge_data(node, child, edge_key)["weight"]
-
-                for (in_node, init_in_node) in G.nodes[node]['in_nodes']:
-                    if (init_in_node, initial_edge[0]) not in G.nodes[node]['paths']:
-                        continue
-
-                    node_w = G.nodes[node]['paths'][(init_in_node, initial_edge[0])] / PG.nodes[partition[node]]['weight']
-                    new_val = dp[child] + node_w + edge_w
-                    
-                    if new_val > dp[node][init_in_node]:
-                        dp[node][init_in_node] = new_val
-                    
-        elif not node_isTransit and child_isTransit:
-            for edge_key in adj[node][child]:
-                initial_edge: tuple[int, int] = adj[node][child][edge_key]['initial_edge']
-
-                node_w = G.nodes[node]['weight'] / PG.nodes[partition[node]]['weight']
-                edge_w = 0 if partition[node] == partition[child] else G.get_edge_data(node, child, edge_key)["weight"]
-                new_val = dp[child][initial_edge[1]] + node_w + edge_w
-
-                if new_val > dp[node]:
-                    dp[node] = new_val
-
-        else:  # both False
-            for edge_key in adj[node][child]:
-                node_w = G.nodes[node]['weight'] / PG.nodes[partition[node]]['weight']
-                # Store the max of the paths
-                edge_w = 0 if partition[node] == partition[child] else G.get_edge_data(node, child, edge_key)["weight"]
-                new_val = dp[child] + node_w + edge_w
-
-                if new_val > dp[node]:
-                    dp[node] = new_val
-                    # best_paths[node] = [node] + best_paths[child]  # Обновляем путь
-
-def findLongestPath(G: nx.MultiDiGraph, PG: nx.Graph, partition: list[int]) -> float:
+def findLongestPath(
+    G: nx.DiGraph,
+    PG: nx.Graph,
+    partition: list[int],
+    subgraphs_data: dict[int, tuple[set[int], int, set[int]]] | None = None,
+    node_to_subgraph: dict[int, int] | None = None,
+) -> float:
     n = len(G.nodes)
-    # print('n:', n)
-    # print(G)
-    # # Dp array
-    # dp: list[float | dict[int, float]] = [
-    #     # max(G.nodes[i]['paths'].values()) if G.nodes[i]['isTransit']
-    #     { in_node[1]:max(*map(lambda x:x[1], filter(lambda x:x[0][0]==in_node, G.nodes[i]['paths'].items())), 0) for in_node in G.nodes[i]['in_nodes'] }
-    #     if G.nodes[i]['isTransit'] else 
-    #     G.nodes[i]['weight']/PG.nodes[partition[i]]['weight']
-    #     for i in range(n)
-    # ]
-    
-    dp: list[float | dict[int, float]] = []
-    for i in range(n):
-        if G.nodes[i]['isTransit']:
-            d: dict[int, float] = {}
-            for (in_node, init_in_node) in G.nodes[i]['in_nodes']:
-                m = 0
-                # print('paths', G.nodes[i]['paths'].items())
-                for k, v in G.nodes[i]['paths'].items():
-                    if k[0] != init_in_node:
-                        continue
-                    m = max(m, v)
-                
-                d[init_in_node] = m / PG.nodes[partition[i]]['weight']
-            dp.append(d)
-        else:
-            dp.append( G.nodes[i]['weight']/PG.nodes[partition[i]]['weight'] )
-    
-    # print('=========', dp)
-    
+
+    dp: list[float] = [ G.nodes[i]['weight']/PG.nodes[partition[i]]['weight'] for i in range(len(partition)) ]
+
     best_paths: list[list[int]] = [[node] for node in G.nodes]  # Изначально путь до каждой вершины — только она сама
-    adj: dict[int, dict[int, dict[int, dict[str, int]]]] = {node:nbrsdict for (node, nbrsdict) in G.adjacency()}
+    adj: dict[int, dict[int, dict[str, int]]] = {node:nbrsdict for (node, nbrsdict) in G.adjacency()}
 
     # Visited array to know if the node     
     # has been visited previously or not 
@@ -192,43 +105,44 @@ def findLongestPath(G: nx.MultiDiGraph, PG: nx.Graph, partition: list[int]) -> f
     # Call DFS for every unvisited vertex 
     for i in range(0, n):
         if not vis[i]:
-            dfs(i, G, PG, partition, dp, vis, best_paths, adj)
-    
-    dp_values: list[float] = []
-    for i, item in enumerate(dp):
-        if isinstance(item, float):
-            dp_values.append(item)
-        elif isinstance(item, dict):
-            m = max(0, *item.values())
-            
-            # print('item', item)
-            # for out_node, w in item.items():
-                # for path in G.nodes[i]['paths']:
-                    # if path[1] == out_node:
-                        # m = max(m, w + G.nodes[i]['paths'][path])
-            
-            dp_values.append(m)
-    
-    max_val = max(dp_values)
-    print('dp', dp)
-    print('dp_values', dp_values)
-    # max_idx = dp.index(max_val)
+            dfs(i, G, PG, partition, dp, vis, best_paths, adj, node_to_subgraph)
+
+    max_val = max(dp)
 
     return max_val
 
-def f_new(G: nx.MultiDiGraph, PG: nx.Graph, partition: list[int] | None) -> float:
+def f_new(
+    G: nx.DiGraph,
+    PG: nx.Graph,
+    partition: list[int] | None,
+    subgraphs_data: dict[int, tuple[set[int], int, set[int]]] | None = None,
+    node_to_subgraph: dict[int, int] | None = None,
+) -> float:
     if partition is None:
         return 2 * settings.BIG_NUMBER
 
     p_loads = [0] * len(PG)
 
+    unpacked: dict[int, int] = dict()
     for i in range(len(partition)):
-        p_loads[partition[i]] += G.nodes[i]['weight']
+        if subgraphs_data is None or node_to_subgraph is None:
+            p_loads[partition[i]] += G.nodes[i]['weight']
+        else:
+            p_loads[partition[i]] += subgraphs_data[i][1]
+            for node in subgraphs_data[i][0]:
+                unpacked[node] = partition[i]
 
     for i in range(len(PG)):
         p_loads[i] /= PG.nodes[i]['weight'] 
 
-    cp_length = findLongestPath(G, PG, partition)
+    if subgraphs_data is None or node_to_subgraph is None:
+        cp_length = findLongestPath(G, PG, partition)
+    else:
+        unpacked_partition: list[int] = []
+        for i in range(len(unpacked)):
+            unpacked_partition.append(unpacked[i])
+            
+        cp_length = findLongestPath(G, PG, unpacked_partition, subgraphs_data, node_to_subgraph)
 
     return max(*p_loads, cp_length)
 
