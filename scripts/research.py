@@ -21,10 +21,10 @@ genetic_partitioner: GeneticPartitioner = GeneticPartitioner()
 
 # graph classes to be run and corresponding output directories
 graph_dirs = [
-    (r'./data/gen_data', r'./results/greed/{}gen_data'),
+    # (r'./data/gen_data', r'./results/greed/{}gen_data'),
     # (r'./data/random', r'./results/greed/{}random'),
-    # (r'./data/layered', r'./results/greed/{}layered'),
-    # (r'./data/triangle', r'./results/greed/{}triangle'),
+    (r'./data/layered', r'./results/greed/{}layered'),
+    (r'./data/triangle', r'./results/greed/{}triangle'),
 ]
 
 physical_graph_dirs = [

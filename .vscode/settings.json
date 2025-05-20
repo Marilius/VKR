@@ -6,6 +6,7 @@
         "edgecut",
         "edgecuts",
         "leftchild",
+        "nbrsdict",
         "ncuts",
         "networkx",
         "nparts",

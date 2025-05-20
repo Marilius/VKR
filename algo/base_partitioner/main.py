@@ -87,7 +87,11 @@ class BasePartitioner:
             if partition:
                 return partition
 
-        (edgecuts, partition2parse) = metis.part_graph(G, nparts, objtype='cut', ncuts=10, ufactor=ufactor, recursive=recursive, seed=seed)
+        if seed is not None:
+            (edgecuts, partition2parse) = metis.part_graph(G, nparts, objtype='cut', ncuts=10, ufactor=ufactor, recursive=recursive, seed=seed)
+        else:
+            (edgecuts, partition2parse) = metis.part_graph(G, nparts, objtype='cut', ncuts=10, ufactor=ufactor, recursive=recursive)
+
         assert len(partition2parse) == len(G.nodes)
 
         partition = [0] * len(G.nodes)

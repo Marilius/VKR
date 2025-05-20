@@ -66,7 +66,7 @@ def add_cache_check(func):
         return wrapped
     return f
 
-def input_graph(path: str) -> nx.Graph:
+def input_graph(path: str) -> nx.DiGraph:
     """
     Reads a graph from a file in either the format used by the task_graph_generator.py script or the
     "node_id node_weight child1 child2 ..." format. The graph is read into a NetworkX graph object.
@@ -84,7 +84,7 @@ def input_graph(path: str) -> nx.Graph:
 
     return graph
 
-def input_networkx_graph_from_file(path: str) -> nx.Graph:
+def input_networkx_graph_from_file(path: str) -> nx.DiGraph:
     """
     Reads a graph from a file in the "node_id node_weight child1 child2 ..." format. The graph is read into a NetworkX graph object.
 
@@ -92,9 +92,9 @@ def input_networkx_graph_from_file(path: str) -> nx.Graph:
         path (str): path to the file containing the graph
 
     Returns:
-        nx.Graph: the read graph
+        nx.DiGraph: the read graph
     """
-    G = nx.Graph()
+    G = nx.DiGraph()
 
     if not isfile(path):
         if 'data_mk' in path:
@@ -110,7 +110,10 @@ def input_networkx_graph_from_file(path: str) -> nx.Graph:
             name = int(name)
             children = list(map(int, children))
             G.add_node(name, weight=size)
-            G.add_edges_from((name, child) for child in children)
+            for child in children:
+                G.add_edge(name, child, weight=1)
+                # TODO
+            # G.add_edges_from((name, child) for )
     G.graph['node_weight_attr'] = 'weight'
 
     mk = 'mk_' if 'data_mk' in path else ''
@@ -180,7 +183,7 @@ def input_generated_graph_partition(path: str) -> list[int]:
 
     return exact_partition
 
-def input_generated_graph_and_processors_from_file(path: str) -> tuple[nx.Graph, list[int], dict[str, int|list[int]]]:
+def input_generated_graph_and_processors_from_file(path: str) -> tuple[nx.DiGraph, list[int], dict[str, int|list[int]]]:
     """
     Reads a graph and processor details from a file created by task_graph_generator.py.
 
