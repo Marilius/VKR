@@ -202,7 +202,7 @@ def input_generated_graph_and_processors_from_file(path: str) -> tuple[nx.DiGrap
     if not isfile(path):
         raise FileNotFoundError(f'File {path} not found')
 
-    G = nx.Graph()
+    G = nx.DiGraph()
     params: dict[str, int|list[int]] = {}
 
     with open(path, 'r') as f:
@@ -219,7 +219,9 @@ def input_generated_graph_and_processors_from_file(path: str) -> tuple[nx.DiGrap
             # name = int(name)
             children = list(map(int, children))
             G.add_node(name, weight=size)
-            G.add_edges_from((name, child) for child in children)
+            for child in children:
+                G.add_edge(name, child, weight=1)
+            # G.add_edges_from((name, child) for child in children)
     G.graph['node_weight_attr'] = 'weight'
 
     graph_name = path.split('/')[-1].split('.')[0]

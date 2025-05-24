@@ -1,3 +1,4 @@
+from typing import Callable
 from algo.helpers import input_graph, calc_cut_ratio
 from algo.helpers import f_new as f
 
@@ -16,6 +17,44 @@ from os.path import join
 
 import json
 from copy import deepcopy
+
+
+def step_first(n):
+    if n < 100:
+        d = 5
+    elif n < 300:
+        d = 10
+    else:
+        d = 20
+    return d
+
+def step_second(n):
+    if n < 100:
+        d = 10
+    elif n < 300:
+        d = 15
+    else:
+        d = 30
+    return d
+
+def step_third(n):
+    if n < 100:
+        d = 15
+    elif n < 300:
+        d = 20
+    else:
+        d = 40
+    return d
+
+def sqrt_d_func(n):
+    return round(n**0.5)
+
+d_functions: dict[str, Callable] = {
+    'step_first': step_first,
+    'step_second': step_second,
+    'step_third': step_third,
+    'sqrt': sqrt_d_func,
+}
 
 
 class GeneticPartitioner:
@@ -62,20 +101,26 @@ class GeneticPartitioner:
             seed = ga_params.get('seed')
             base_partitioner: BasePartitioner = BasePartitioner()
             
-            n = len(G)
-            if n < 50:
-                d = 5
-            elif n < 100:
-                d = 10
-            elif n < 400:
-                d = 20
-            else:
-                d = 50
+            # n = len(G)
+            # if n < 50:
+            #     d = 5
+            # elif n < 100:
+            #     d = 10
+            # elif n < 400:
+            #     d = 20
+            # else:
+            #     d = 50
+                
+
+            # else:
+            #     d = 20
+            d_func: str = ga_params.get('d_func')
+            d = d_functions[d_func](len(G))
             
             undirected_graph: nx.Graph = G.to_undirected()
             
             print('AAAAAAAAAAAAAAAA', G, len(G) // d, 1000, False, seed)
-            partition: list[int] = base_partitioner.metis_part(undirected_graph, len(G) // d, 1000, False, seed)
+            partition: list[int] = base_partitioner.metis_part(undirected_graph, len(G) // d, 100, False, seed)
 
             transit_graph, subgraphs_data, node_to_subgraph, _ = create_transit_graph(G, partition)
             individual_len = len(subgraphs_data)
@@ -140,7 +185,7 @@ class GeneticPartitioner:
             f_best = unpack_transit_partition(f_best, subgraphs_data)
             f2 = f(G, PG, f_best)
             
-            assert f1 == f2
+            assert f1 == f2, f'{f1} {f2}'
 
         return f_best
     

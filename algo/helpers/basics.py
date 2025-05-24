@@ -144,6 +144,8 @@ def f_new(
             
         cp_length = findLongestPath(G, PG, unpacked_partition, subgraphs_data, node_to_subgraph)
 
+    print(p_loads, cp_length)
+
     return max(*p_loads, cp_length)
 
 def f(G: nx.Graph | None, PG: nx.Graph, partition: list[int] | None, cr_max: float) -> float:
