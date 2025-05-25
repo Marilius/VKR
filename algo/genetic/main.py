@@ -185,7 +185,7 @@ class GeneticPartitioner:
             f_best = unpack_transit_partition(f_best, subgraphs_data)
             f2 = f(G, PG, f_best)
             
-            assert f1 == f2, f'{f1} {f2}'
+            assert abs(f1 - f2) < 0.00001, f'{f1} {f2}'
 
         return f_best
     
